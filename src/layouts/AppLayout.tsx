@@ -1,6 +1,10 @@
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { Avatar, Button, Layout, Typography } from 'antd'
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useAuth } from '../hook/useAuth'
+
+const { Header, Content } = Layout
 
 export function AppLayout() {
   const { user, logout } = useAuth()
@@ -12,19 +16,22 @@ export function AppLayout() {
   }
 
   return (
-    <div className="app-layout">
-      <header className="app-header">
-        <span className="app-brand">StockPro</span>
-        <div className="app-user">
-          <span>{user?.name}</span>
-          <button type="button" className="btn btn-secondary" onClick={handleLogout} disabled={loggingOut}>
+    <Layout className="min-h-full">
+      <Header className="flex items-center justify-between bg-white px-6 shadow-sm">
+        <span className="text-lg font-bold text-brand">StockPro</span>
+        <div className="flex items-center gap-3">
+          <Avatar icon={<UserOutlined />} />
+          <Typography.Text strong className="hidden sm:inline">
+            {user?.name}
+          </Typography.Text>
+          <Button icon={<LogoutOutlined />} onClick={handleLogout} loading={loggingOut}>
             Se déconnecter
-          </button>
+          </Button>
         </div>
-      </header>
-      <main className="app-main">
+      </Header>
+      <Content className="p-6">
         <Outlet />
-      </main>
-    </div>
+      </Content>
+    </Layout>
   )
 }
