@@ -1,7 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { LockOutlined, MailOutlined, SafetyOutlined } from '@ant-design/icons'
+import { Alert, Button, Form, Input, Typography } from 'antd'
+import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
+
+interface CredentialsValues {
+  email: string
+  password: string
+}
+
+interface TwoFactorValues {
+  code: string
+}
 
 export function LoginPage() {
   const { login, verifyTwoFactor } = useAuth()
@@ -9,16 +20,12 @@ export function LoginPage() {
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from ?? '/'
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
   // Présent quand le mot de passe est validé mais qu'il faut encore le code 2FA
   const [challengeToken, setChallengeToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleCredentials(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function handleCredentials({ email, password }: CredentialsValues) {
     setError(null)
     setSubmitting(true)
     try {
@@ -35,8 +42,7 @@ export function LoginPage() {
     }
   }
 
-  async function handleTwoFactor(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function handleTwoFactor({ code }: TwoFactorValues) {
     if (!challengeToken) return
     setError(null)
     setSubmitting(true)
@@ -53,78 +59,83 @@ export function LoginPage() {
   function backToCredentials() {
     // Le challenge expire au bout de 5 min : on recommence depuis le mot de passe
     setChallengeToken(null)
-    setCode('')
     setError(null)
   }
 
   if (challengeToken) {
     return (
-      <form className="auth-form" onSubmit={handleTwoFactor}>
-        <h1>Vérification</h1>
-        <p className="auth-hint">
+      <>
+        <Typography.Title level={3} className="mb-1">
+          Vérification
+        </Typography.Title>
+        <Typography.Paragraph type="secondary">
           Saisissez le code à 6 chiffres de votre application d’authentification, ou un code de secours.
-        </p>
+        </Typography.Paragraph>
 
-        <label className="field">
-          <span>Code</span>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            autoComplete="one-time-code"
-            inputMode="text"
-            autoFocus
-            required
-          />
-        </label>
+        <Form<TwoFactorValues> layout="vertical" onFinish={handleTwoFactor} requiredMark={false}>
+          <Form.Item
+            name="code"
+            label="Code"
+            rules={[{ required: true, message: 'Saisissez votre code' }]}
+          >
+            <Input
+              prefix={<SafetyOutlined />}
+              size="large"
+              autoComplete="one-time-code"
+              placeholder="123 456 ou XXXX-XXXX"
+              autoFocus
+            />
+          </Form.Item>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
+          {error && <Alert type="error" title={error} showIcon className="mb-4" />}
 
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? 'Vérification…' : 'Valider'}
-        </button>
-        <button type="button" className="btn btn-link" onClick={backToCredentials}>
-          Retour
-        </button>
-      </form>
+          <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
+            Valider
+          </Button>
+          <Button type="link" block className="mt-2" onClick={backToCredentials}>
+            Retour
+          </Button>
+        </Form>
+      </>
     )
   }
 
   return (
-    <form className="auth-form" onSubmit={handleCredentials}>
-      <h1>Connexion</h1>
+    <>
+      <Typography.Title level={3} className="mb-6">
+        Connexion
+      </Typography.Title>
 
-      <label className="field">
-        <span>Email</span>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          autoFocus
-          required
-        />
-      </label>
+      <Form<CredentialsValues> layout="vertical" onFinish={handleCredentials} requiredMark={false}>
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[
+            { required: true, message: 'Saisissez votre email' },
+            { type: 'email', message: 'Email invalide' },
+          ]}
+        >
+          <Input prefix={<MailOutlined />} size="large" autoComplete="email" autoFocus />
+        </Form.Item>
 
-      <label className="field">
-        <span>Mot de passe</span>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-      </label>
+        <Form.Item
+          name="password"
+          label="Mot de passe"
+          rules={[{ required: true, message: 'Saisissez votre mot de passe' }]}
+        >
+          <Input.Password prefix={<LockOutlined />} size="large" autoComplete="current-password" />
+        </Form.Item>
 
-      {error && <p className="form-error" role="alert">{error}</p>}
+        {error && <Alert type="error" title={error} showIcon className="mb-4" />}
 
-      <button type="submit" className="btn btn-primary" disabled={submitting}>
-        {submitting ? 'Connexion…' : 'Se connecter'}
-      </button>
+        <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
+          Se connecter
+        </Button>
+      </Form>
 
-      <p className="auth-switch">
+      <p className="mt-6 text-center text-sm text-slate-500">
         Pas encore de compte ? <Link to="/register">Créer un compte</Link>
       </p>
-    </form>
+    </>
   )
 }

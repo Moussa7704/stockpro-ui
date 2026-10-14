@@ -1,7 +1,9 @@
+import { Spin } from 'antd'
+
 export function FullPageLoader() {
   return (
-    <div className="full-page-loader" role="status">
-      Chargement…
+    <div className="flex h-full items-center justify-center">
+      <Spin size="large" />
     </div>
   )
 }

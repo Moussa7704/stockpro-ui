@@ -1,24 +1,29 @@
+import { Card, Descriptions, Tag, Typography } from 'antd'
 import { useAuth } from '../../hook/useAuth'
 
-const ROLE_LABELS = {
-  admin: 'Administrateur',
-  manager: 'Gestionnaire',
-  employee: 'Employé',
+const ROLES = {
+  admin: { label: 'Administrateur', color: 'red' },
+  manager: { label: 'Gestionnaire', color: 'blue' },
+  employee: { label: 'Employé', color: 'default' },
 } as const
 
 export function DashboardPage() {
   const { user } = useAuth()
   if (!user) return null
 
+  const role = ROLES[user.role]
+
   return (
-    <section className="dashboard">
-      <h1>Bonjour {user.name}</h1>
-      <dl className="profile">
-        <dt>Email</dt>
-        <dd>{user.email}</dd>
-        <dt>Rôle</dt>
-        <dd>{ROLE_LABELS[user.role]}</dd>
-      </dl>
-    </section>
+    <div className="mx-auto max-w-4xl">
+      <Typography.Title level={2}>Bonjour {user.name}</Typography.Title>
+      <Card title="Mon profil">
+        <Descriptions column={1}>
+          <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
+          <Descriptions.Item label="Rôle">
+            <Tag color={role.color}>{role.label}</Tag>
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+    </div>
   )
 }
