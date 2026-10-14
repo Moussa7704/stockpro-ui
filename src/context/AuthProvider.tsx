@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { refreshAccessToken, setAccessToken, setSessionExpiredHandler } from '../services/api'
 import * as authService from '../services/auth.service'
 import type { User } from '../types/auth'
-import { AuthContext, type AuthContextValue, type AuthStatus, type LoginResult } from './AuthContext'
+import { AuthContext, type AuthContextValue, type AuthStatus, type OtpChallenge } from './AuthContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -50,31 +50,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setSessionExpiredHandler(null)
   }, [clearSession])
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<LoginResult> => {
-      const result = await authService.login({ email, password })
-      if (result.twoFactorRequired) {
-        return { twoFactorRequired: true, challengeToken: result.challengeToken }
-      }
+  const login = useCallback(async (email: string, password: string): Promise<OtpChallenge> => {
+    // Pas encore de session : le serveur a seulement envoyé un code par email
+    const { challengeToken, sentTo, expiresInSeconds } = await authService.login({ email, password })
+    return { challengeToken, sentTo, expiresInSeconds }
+  }, [])
+
+  const verifyOtp = useCallback(
+    async (challengeToken: string, code: string) => {
+      const result = await authService.loginWithOtp({ challengeToken, code })
       signIn(result.user, result.accessToken)
-      return { twoFactorRequired: false }
     },
     [signIn],
   )
 
-  const verifyTwoFactor = useCallback(
-    async (challengeToken: string, code: string) => {
-      const result = await authService.loginWithTwoFactor({ challengeToken, code })
-      signIn(result.user, result.accessToken)
-    },
-    [signIn],
-  )
+  const resendOtp = useCallback(async (challengeToken: string) => {
+    await authService.resendOtp(challengeToken)
+  }, [])
 
   const register = useCallback(
     async (name: string, email: string, password: string) => {
       await authService.register({ name, email, password })
-      // Un compte neuf n'a pas de 2FA : le login renvoie directement les tokens
-      await login(email, password)
+      // Même pour un compte neuf, la connexion passe par le code envoyé par email
+      return login(email, password)
     },
     [login],
   )
@@ -89,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, verifyTwoFactor, register, logout }),
-    [user, status, login, verifyTwoFactor, register, logout],
+    () => ({ user, status, login, verifyOtp, resendOtp, register, logout }),
+    [user, status, login, verifyOtp, resendOtp, register, logout],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

@@ -1,9 +1,8 @@
 import type {
-  BackupCodesResponse,
-  LoginResponse,
-  LoginTwoFactorResponse,
+  LoginChallengeResponse,
+  LoginOtpResponse,
   MeResponse,
-  TwoFactorSetupResponse,
+  ResendOtpResponse,
   User,
 } from '../types/auth'
 import { api } from './api'
@@ -12,12 +11,21 @@ export function register(input: { name: string; email: string; password: string 
   return api<{ user: User }>('/auth/register', { method: 'POST', body: input })
 }
 
+// Étape 1 : email + mot de passe → code envoyé par email
 export function login(input: { email: string; password: string }) {
-  return api<LoginResponse>('/auth/login', { method: 'POST', body: input })
+  return api<LoginChallengeResponse>('/auth/login', { method: 'POST', body: input })
 }
 
-export function loginWithTwoFactor(input: { challengeToken: string; code: string }) {
-  return api<LoginTwoFactorResponse>('/auth/login/2fa', { method: 'POST', body: input })
+// Étape 2 : code reçu par email → session
+export function loginWithOtp(input: { challengeToken: string; code: string }) {
+  return api<LoginOtpResponse>('/auth/login/otp', { method: 'POST', body: input })
+}
+
+export function resendOtp(challengeToken: string) {
+  return api<ResendOtpResponse>('/auth/login/otp/resend', {
+    method: 'POST',
+    body: { challengeToken },
+  })
 }
 
 export function logout() {
@@ -26,22 +34,4 @@ export function logout() {
 
 export function getMe() {
   return api<MeResponse>('/auth/me')
-}
-
-// ---------- Double authentification (utilisateur connecté) ----------
-
-export function setupTwoFactor() {
-  return api<TwoFactorSetupResponse>('/auth/2fa/setup', { method: 'POST' })
-}
-
-export function enableTwoFactor(code: string) {
-  return api<BackupCodesResponse>('/auth/2fa/enable', { method: 'POST', body: { code } })
-}
-
-export function disableTwoFactor(input: { password: string; code: string }) {
-  return api<{ twoFactorEnabled: false }>('/auth/2fa/disable', { method: 'POST', body: input })
-}
-
-export function regenerateBackupCodes(input: { password: string; code: string }) {
-  return api<BackupCodesResponse>('/auth/2fa/backup-codes', { method: 'POST', body: input })
 }

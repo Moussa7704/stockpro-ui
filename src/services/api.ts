@@ -92,8 +92,8 @@ export async function api<T>(path: string, options: ApiOptions = {}, retry = tru
 
 export function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    // 429 = rate limiting côté serveur (trop d'essais de connexion…)
-    if (error.status === 429) return 'Trop de tentatives, réessayez dans quelques minutes.'
+    // Les messages du serveur sont rédigés pour l'utilisateur, y compris les 429
+    // ("Patientez 42 secondes avant de redemander un code", "Trop de tentatives…")
     return error.message
   }
   return 'Impossible de joindre le serveur.'

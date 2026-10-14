@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { LoginPage } from '../features/auth/LoginPage'
 import { RegisterPage } from '../features/auth/RegisterPage'
+import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
@@ -15,6 +16,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/login', element: <LoginPage /> },
           { path: '/register', element: <RegisterPage /> },
+          { path: '/verify-otp', element: <VerifyOtpPage /> },
         ],
       },
     ],
