@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
+import type { VerifyOtpState } from './VerifyOtpPage'
 
 interface RegisterValues {
   name: string
@@ -23,8 +24,9 @@ export function RegisterPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await register(name, email, password)
-      navigate('/', { replace: true })
+      // Compte créé : la connexion passe ensuite par le code envoyé par email
+      const challenge = await register(name, email, password)
+      navigate('/verify-otp', { state: { challenge } satisfies VerifyOtpState })
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {

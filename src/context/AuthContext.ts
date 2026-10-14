@@ -1,17 +1,22 @@
 import { createContext } from 'react'
-import type { User } from '../types/auth'
+import type { LoginChallengeResponse, User } from '../types/auth'
 
 // loading : on ne sait pas encore si une session existe (appel /refresh en cours)
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
 
-export type LoginResult = { twoFactorRequired: false } | { twoFactorRequired: true; challengeToken: string }
+// Ce que la page de vérification doit connaître pour valider ou renvoyer le code
+export type OtpChallenge = Omit<LoginChallengeResponse, 'otpRequired'>
 
 export interface AuthContextValue {
   user: User | null
   status: AuthStatus
-  login: (email: string, password: string) => Promise<LoginResult>
-  verifyTwoFactor: (challengeToken: string, code: string) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
+  /** Étape 1 : vérifie le mot de passe et déclenche l'envoi du code par email. */
+  login: (email: string, password: string) => Promise<OtpChallenge>
+  /** Étape 2 : vérifie le code reçu ; ouvre la session s'il est bon. */
+  verifyOtp: (challengeToken: string, code: string) => Promise<void>
+  resendOtp: (challengeToken: string) => Promise<void>
+  /** Crée le compte puis lance la connexion : renvoie le challenge à vérifier. */
+  register: (name: string, email: string, password: string) => Promise<OtpChallenge>
   logout: () => Promise<void>
 }
 
