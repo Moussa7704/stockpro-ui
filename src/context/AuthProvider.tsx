@@ -68,15 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.resendOtp(challengeToken)
   }, [])
 
-  const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      await authService.register({ name, email, password })
-      // Même pour un compte neuf, la connexion passe par le code envoyé par email
-      return login(email, password)
-    },
-    [login],
-  )
-
   const logout = useCallback(async () => {
     try {
       await authService.logout()
@@ -87,8 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, verifyOtp, resendOtp, register, logout }),
-    [user, status, login, verifyOtp, resendOtp, register, logout],
+    () => ({ user, status, login, verifyOtp, resendOtp, logout }),
+    [user, status, login, verifyOtp, resendOtp, logout],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

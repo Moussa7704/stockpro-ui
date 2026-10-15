@@ -5,6 +5,8 @@ export interface User {
   name: string
   email: string
   role: UserRole
+  // true tant qu'un compte invité n'a pas encore choisi son mot de passe
+  invitationPending: boolean
   createdAt: string
   updatedAt: string
 }
@@ -38,4 +40,16 @@ export interface RefreshResponse {
 // GET /api/auth/me
 export interface MeResponse {
   user: User
+}
+
+// POST /api/auth/password/check : à quoi sert le lien reçu par email
+export interface PasswordTokenInfo {
+  purpose: 'invite' | 'reset'
+  name: string
+  email: string
+}
+
+// Réponses simples du serveur (mot de passe oublié, réinitialisation…)
+export interface MessageResponse {
+  message: string
 }
