@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { FullPageLoader } from '../components/FullPageLoader'
 import { useAuth } from '../hook/useAuth'
+import type { UserRole } from '../types/auth'
 
 /** Pages réservées aux utilisateurs connectés. */
 export function ProtectedRoute() {
@@ -15,7 +16,18 @@ export function ProtectedRoute() {
   return <Outlet />
 }
 
-/** Pages de connexion / inscription : inutiles si on est déjà connecté. */
+/**
+ * Pages réservées à certains rôles (à placer sous ProtectedRoute).
+ * Confort d'affichage uniquement : la vraie protection est côté API (requireRole).
+ */
+export function RoleRoute({ roles }: { roles: UserRole[] }) {
+  const { user } = useAuth()
+
+  if (!user || !roles.includes(user.role)) return <Navigate to="/" replace />
+  return <Outlet />
+}
+
+/** Pages de connexion : inutiles si on est déjà connecté. */
 export function PublicOnlyRoute() {
   const { status } = useAuth()
 

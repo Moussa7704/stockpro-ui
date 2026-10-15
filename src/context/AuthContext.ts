@@ -15,8 +15,6 @@ export interface AuthContextValue {
   /** Étape 2 : vérifie le code reçu ; ouvre la session s'il est bon. */
   verifyOtp: (challengeToken: string, code: string) => Promise<void>
   resendOtp: (challengeToken: string) => Promise<void>
-  /** Crée le compte puis lance la connexion : renvoie le challenge à vérifier. */
-  register: (name: string, email: string, password: string) => Promise<OtpChallenge>
   logout: () => Promise<void>
 }
 

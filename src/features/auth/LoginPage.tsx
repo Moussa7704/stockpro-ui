@@ -60,6 +60,10 @@ export function LoginPage() {
           <Input.Password prefix={<LockOutlined />} size="large" autoComplete="current-password" />
         </Form.Item>
 
+        <div className="-mt-3 mb-4 text-right text-sm">
+          <Link to="/forgot-password">Mot de passe oublié ?</Link>
+        </div>
+
         {error && <Alert type="error" title={error} showIcon className="mb-4" />}
 
         <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
@@ -68,7 +72,7 @@ export function LoginPage() {
       </Form>
 
       <p className="mt-6 text-center text-sm text-slate-500">
-        Pas encore de compte ? <Link to="/register">Créer un compte</Link>
+        Pas encore de compte ? Demandez à un administrateur de vous inviter.
       </p>
     </>
   )
