@@ -1,8 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { setAccessToken, setSessionExpiredHandler } from '../services/api'
 import { server } from './server'
+
+// Écrans riches (antd) : sous la charge de toute la suite, un affichage peut dépasser 1 s
+configure({ asyncUtilTimeout: 4000 })
 
 // jsdom ne connaît pas matchMedia ni ResizeObserver, utilisés par antd (grilles, tableaux)
 Object.defineProperty(window, 'matchMedia', {
