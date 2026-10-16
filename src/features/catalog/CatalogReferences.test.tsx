@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { useCatalogApi } from '../../test/catalogApi'
+import { mockCatalogApi } from '../../test/catalogApi'
 import { meResponse } from '../../test/fixtures'
 import { renderApp } from '../../test/render'
 
@@ -9,7 +9,7 @@ const viewer = meResponse({ permissions: ['products.view'], roleCode: 'cashier' 
 
 describe('Catégories', () => {
   it('affiche l’arbre et ajoute une sous-catégorie sous le bon parent', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/categories', { session: manager })
 
     // Riz est affiché sous Épicerie (arbre déplié)
@@ -27,7 +27,7 @@ describe('Catégories', () => {
   })
 
   it('une catégorie ne peut pas devenir sa propre sous-catégorie', async () => {
-    useCatalogApi()
+    mockCatalogApi()
     const { user } = renderApp('/categories', { session: manager })
 
     await user.click(await screen.findByRole('button', { name: 'Modifier Épicerie' }))
@@ -43,7 +43,7 @@ describe('Catégories', () => {
   })
 
   it('consultation seule : aucun bouton de gestion', async () => {
-    useCatalogApi()
+    mockCatalogApi()
     renderApp('/categories', { session: viewer })
 
     expect(await screen.findByText('Épicerie')).toBeInTheDocument()
@@ -54,7 +54,7 @@ describe('Catégories', () => {
 
 describe('Unités', () => {
   it('crée une unité à quantités décimales', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/units', { session: manager })
 
     expect(await screen.findByText('Kilogramme')).toBeInTheDocument()
@@ -74,7 +74,7 @@ describe('Unités', () => {
 
 describe('Fournisseurs', () => {
   it('recherche côté serveur et crée un fournisseur', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/suppliers', { session: manager })
 
     expect(await screen.findByText('Grossiste du port')).toBeInTheDocument()
@@ -95,7 +95,7 @@ describe('Fournisseurs', () => {
   })
 
   it('sans purchases.manage : consultation seulement', async () => {
-    useCatalogApi()
+    mockCatalogApi()
     renderApp('/suppliers', { session: viewer })
 
     expect(await screen.findByText('Grossiste du port')).toBeInTheDocument()
@@ -105,7 +105,7 @@ describe('Fournisseurs', () => {
 
 describe('Menu Catalogue', () => {
   it('visible avec products.view, absent sinon', async () => {
-    useCatalogApi()
+    mockCatalogApi()
     renderApp('/', { session: viewer })
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByText('Produits')).toBeInTheDocument()

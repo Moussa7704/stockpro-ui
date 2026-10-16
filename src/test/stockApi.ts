@@ -38,7 +38,7 @@ const ref = (item: Product) => ({ id: item.id, sku: item.sku, name: item.name })
  * Fausse API du stock (avec état) : niveaux, alertes, mouvements, documents, et la recherche /
  * le scan de produits utilisés par le sélecteur de produits.
  */
-export function useStockApi(options: { withCosts?: boolean } = {}) {
+export function mockStockApi(options: { withCosts?: boolean } = {}) {
   const withCosts = options.withCosts ?? true
   const db = {
     levels: [

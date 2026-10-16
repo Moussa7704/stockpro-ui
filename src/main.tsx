@@ -2,6 +2,8 @@ import { StyleProvider } from '@ant-design/cssinjs'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { App as AntdApp, ConfigProvider } from 'antd'
 import frFR from 'antd/locale/fr_FR'
+import dayjs from 'dayjs'
+import 'dayjs/locale/fr'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
@@ -11,6 +13,9 @@ import { queryClient } from './lib/queryClient'
 import { setSessionExpiredHandler } from './services/api'
 import { createAppStore } from './store'
 import { restoreSession, sessionExpired } from './store/authSlice'
+
+// Calendriers en français (noms des mois et des jours)
+dayjs.locale('fr')
 
 const store = createAppStore()
 // Refresh refusé pendant l'utilisation (session révoquée ou expirée) : retour à la connexion

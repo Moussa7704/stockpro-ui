@@ -2,14 +2,14 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { meResponse } from '../../test/fixtures'
 import { renderApp } from '../../test/render'
-import { useStockApi } from '../../test/stockApi'
+import { mockStockApi } from '../../test/stockApi'
 
 const keeper = meResponse({ permissions: ['stock.view', 'stock.adjust', 'stock.transfer', 'products.view'] })
 const viewer = meResponse({ permissions: ['stock.view', 'products.view'], roleCode: 'cashier' })
 
 describe('Niveaux de stock', () => {
   it('quantités, stock bas signalé, valeur au coût moyen pour qui voit les coûts', async () => {
-    useStockApi()
+    mockStockApi()
     renderApp('/stock', { session: keeper })
 
     const row = (await screen.findByText('Riz parfumé 25 kg')).closest('tr')!
@@ -19,7 +19,7 @@ describe('Niveaux de stock', () => {
   })
 
   it('sans droit aux coûts : ni coût moyen ni valeur', async () => {
-    useStockApi({ withCosts: false })
+    mockStockApi({ withCosts: false })
     renderApp('/stock', { session: viewer })
 
     expect(await screen.findByText('Riz parfumé 25 kg')).toBeInTheDocument()
@@ -27,7 +27,7 @@ describe('Niveaux de stock', () => {
   })
 
   it('filtre « stock bas » côté serveur et vue des alertes avec leur nombre', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user } = renderApp('/stock', { session: keeper })
     await screen.findByText('Riz parfumé 25 kg')
 
@@ -41,7 +41,7 @@ describe('Niveaux de stock', () => {
   })
 
   it('ouvre les mouvements d’un produit : filtre transmis, quantités signées', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user } = renderApp('/stock', { session: keeper })
 
     await user.click(await screen.findByRole('link', { name: 'Mouvements de Riz parfumé 25 kg' }))
@@ -56,7 +56,7 @@ describe('Niveaux de stock', () => {
 
 describe('Ajustements', () => {
   it('stock initial : produit scanné, entrée au coût indicatif', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user } = renderApp('/stock/adjustments', { session: keeper })
 
     await user.click(await screen.findByRole('button', { name: /Nouvel ajustement/ }))
@@ -77,7 +77,7 @@ describe('Ajustements', () => {
   })
 
   it('casse : la quantité part en sortie (négative), sans coût', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user } = renderApp('/stock/adjustments', { session: keeper })
 
     await user.click(await screen.findByRole('button', { name: /Nouvel ajustement/ }))
@@ -98,7 +98,7 @@ describe('Ajustements', () => {
   })
 
   it('refuse un ajustement sans quantité, et un code inconnu est signalé', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user } = renderApp('/stock/adjustments', { session: keeper })
 
     await user.click(await screen.findByRole('button', { name: /Nouvel ajustement/ }))
@@ -112,7 +112,7 @@ describe('Ajustements', () => {
   })
 
   it('consultation seule : pas de bouton d’ajustement', async () => {
-    useStockApi()
+    mockStockApi()
     renderApp('/stock/adjustments', { session: viewer })
     expect(await screen.findByText('Aucun ajustement')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Nouvel ajustement/ })).not.toBeInTheDocument()
@@ -121,7 +121,7 @@ describe('Ajustements', () => {
 
 describe('Transferts', () => {
   it('prépare, expédie puis réceptionne avec un écart', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user } = renderApp('/stock/transfers', { session: keeper })
 
     await user.click(await screen.findByRole('button', { name: /Nouveau transfert/ }))
@@ -164,7 +164,7 @@ describe('Transferts', () => {
 
 describe('Inventaires', () => {
   it('compte à la douchette (+1 par passage), enregistre, valide et affiche les écarts', async () => {
-    const { lastRequest } = useStockApi()
+    const { lastRequest } = mockStockApi()
     const { user, router } = renderApp('/stock/inventories', { session: keeper })
 
     await user.click(await screen.findByRole('button', { name: /Nouvel inventaire/ }))

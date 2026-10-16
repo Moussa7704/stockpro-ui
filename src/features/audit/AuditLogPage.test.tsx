@@ -33,7 +33,7 @@ const entries: AuditLogEntry[] = [
   },
 ]
 
-function useAuditApi() {
+function mockAuditApi() {
   const calls: URLSearchParams[] = []
   server.use(
     mock.get('/api/shops', () => HttpResponse.json({ shops: shopsFixture })),
@@ -51,7 +51,7 @@ const session = meResponse({ permissions: ['audit.view'] })
 
 describe('Journal d’audit', () => {
   it('affiche les actions en français, avec l’auteur (ou « Système »)', async () => {
-    useAuditApi()
+    mockAuditApi()
     renderApp('/audit', { session })
 
     expect(await screen.findByText('Droits d’un membre ajustés')).toBeInTheDocument()
@@ -64,7 +64,7 @@ describe('Journal d’audit', () => {
   })
 
   it('détaille l’avant / après en masquant ce qui n’a pas changé', async () => {
-    useAuditApi()
+    mockAuditApi()
     const { user } = renderApp('/audit', { session })
 
     const row = (await screen.findByText('Fournisseur archivé(e)')).closest('tr')!
@@ -77,7 +77,7 @@ describe('Journal d’audit', () => {
   })
 
   it('filtre par élément et pagine côté serveur', async () => {
-    const calls = useAuditApi()
+    const calls = mockAuditApi()
     const { user } = renderApp('/audit', { session })
     await screen.findByText('Droits d’un membre ajustés')
 

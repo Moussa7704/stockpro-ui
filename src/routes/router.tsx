@@ -12,6 +12,10 @@ import { SelectCompanyPage } from '../features/auth/SelectCompanyPage'
 import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { MembersPage } from '../features/members/MembersPage'
+import { InvoicesPage } from '../features/purchases/InvoicesPage'
+import { OrdersPage } from '../features/purchases/OrdersPage'
+import { ReceiptsPage } from '../features/purchases/ReceiptsPage'
+import { ReturnsPage } from '../features/purchases/ReturnsPage'
 import { RolesPage } from '../features/roles/RolesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { AdjustmentsPage } from '../features/stock/AdjustmentsPage'
@@ -82,6 +86,20 @@ export const routes: RouteObject[] = [
                   { path: '/stock/inventories', element: <InventoriesPage /> },
                   { path: '/stock/inventories/:id', element: <InventoryPage /> },
                 ],
+              },
+              // Achats : commandes, réceptions et retours avec purchases.manage
+              {
+                element: <PermissionRoute permission="purchases.manage" />,
+                children: [
+                  { path: '/purchases/orders', element: <OrdersPage /> },
+                  { path: '/purchases/receipts', element: <ReceiptsPage /> },
+                  { path: '/purchases/returns', element: <ReturnsPage /> },
+                ],
+              },
+              // Factures et paiements fournisseurs : supplier_payments.manage (comptable, gérant…)
+              {
+                element: <PermissionRoute permission="supplier_payments.manage" />,
+                children: [{ path: '/purchases/invoices', element: <InvoicesPage /> }],
               },
               {
                 element: <PermissionRoute permission="users.manage" />,

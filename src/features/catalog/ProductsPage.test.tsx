@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { useCatalogApi } from '../../test/catalogApi'
+import { mockCatalogApi } from '../../test/catalogApi'
 import { meResponse } from '../../test/fixtures'
 import { renderApp } from '../../test/render'
 
@@ -8,7 +8,7 @@ const manager = meResponse({ permissions: ['products.view', 'products.manage', '
 
 describe('Produits : liste', () => {
   it('affiche prix en FCFA, catégorie, référence ; recherche côté serveur', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/products', { session: manager })
 
     expect(await screen.findByText('Riz parfumé 25 kg')).toBeInTheDocument()
@@ -23,7 +23,7 @@ describe('Produits : liste', () => {
   })
 
   it('tri et statut demandés au serveur', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/products', { session: manager })
     await screen.findByText('Riz parfumé 25 kg')
 
@@ -36,7 +36,7 @@ describe('Produits : liste', () => {
   })
 
   it('consultation seule (caissier) : ni création, ni modification, ni prix d’achat', async () => {
-    useCatalogApi()
+    mockCatalogApi()
     renderApp('/products', { session: meResponse({ permissions: ['products.view'], roleCode: 'cashier' }) })
 
     expect(await screen.findByText('Riz parfumé 25 kg')).toBeInTheDocument()
@@ -48,7 +48,7 @@ describe('Produits : liste', () => {
 
 describe('Produits : fiche', () => {
   it('crée un produit : SKU en majuscules, un scan (Entrée) ne valide pas le formulaire', async () => {
-    const { db, lastRequest } = useCatalogApi()
+    const { db, lastRequest } = mockCatalogApi()
     const { user } = renderApp('/products', { session: manager })
 
     await user.click(await screen.findByRole('button', { name: /Nouveau produit/ }))
@@ -75,7 +75,7 @@ describe('Produits : fiche', () => {
   })
 
   it('sans prices.manage : prix grisés, et seul ce qui change est envoyé', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/products', { session: meResponse({ permissions: ['products.view', 'products.manage'] }) })
 
     await user.click(await screen.findByRole('button', { name: 'Modifier Riz parfumé 25 kg' }))
@@ -93,7 +93,7 @@ describe('Produits : fiche', () => {
   })
 
   it('archive un produit après confirmation', async () => {
-    const { lastRequest } = useCatalogApi()
+    const { lastRequest } = mockCatalogApi()
     const { user } = renderApp('/products', { session: manager })
 
     await user.click(await screen.findByRole('button', { name: 'Archiver Sucre en poudre' }))
