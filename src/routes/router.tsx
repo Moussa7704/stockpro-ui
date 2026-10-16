@@ -1,6 +1,10 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import { AccountPage } from '../features/account/AccountPage'
 import { AuditLogPage } from '../features/audit/AuditLogPage'
+import { CategoriesPage } from '../features/catalog/CategoriesPage'
+import { ProductsPage } from '../features/catalog/ProductsPage'
+import { SuppliersPage } from '../features/catalog/SuppliersPage'
+import { UnitsPage } from '../features/catalog/UnitsPage'
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
@@ -51,6 +55,16 @@ export const routes: RouteObject[] = [
             children: [
               { path: '/', element: <DashboardPage /> },
               { path: '/account', element: <AccountPage /> },
+              // Catalogue : unités et catégories lisibles par tout membre, produits et fournisseurs avec products.view
+              { path: '/units', element: <UnitsPage /> },
+              { path: '/categories', element: <CategoriesPage /> },
+              {
+                element: <PermissionRoute permission="products.view" />,
+                children: [
+                  { path: '/products', element: <ProductsPage /> },
+                  { path: '/suppliers', element: <SuppliersPage /> },
+                ],
+              },
               {
                 element: <PermissionRoute permission="users.manage" />,
                 children: [{ path: '/members', element: <MembersPage /> }],

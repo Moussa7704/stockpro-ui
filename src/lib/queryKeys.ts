@@ -20,4 +20,21 @@ export const queryKeys = {
   roles: { all: ['roles'] as const },
   permissionCatalog: ['permission-catalog'] as const,
   auditLogs: (query: object) => ['audit-logs', query] as const,
+  units: {
+    all: ['units'] as const,
+    withArchived: ['units', 'with-archived'] as const,
+  },
+  categories: {
+    all: ['categories'] as const,
+    withArchived: ['categories', 'with-archived'] as const,
+  },
+  suppliers: {
+    all: ['suppliers'] as const,
+    list: (query: object) => ['suppliers', 'list', query] as const,
+  },
+  products: {
+    all: ['products'] as const,
+    list: (query: object) => ['products', 'list', query] as const,
+    detail: (id: string) => ['products', 'detail', id] as const,
+  },
 }
