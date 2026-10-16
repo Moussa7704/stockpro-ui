@@ -5,12 +5,14 @@ import {
   CarryOutOutlined,
   DatabaseOutlined,
   ColumnWidthOutlined,
+  CreditCardOutlined,
   DashboardOutlined,
   DownOutlined,
   FileDoneOutlined,
   FileTextOutlined,
   FolderOutlined,
   HistoryOutlined,
+  ShoppingCartOutlined,
   InboxOutlined,
   LogoutOutlined,
   RollbackOutlined,
@@ -71,6 +73,13 @@ const NAVIGATION: { group: string | null; links: NavLink[] }[] = [
   {
     group: null,
     links: [{ path: '/', label: 'Tableau de bord', icon: <DashboardOutlined /> }],
+  },
+  {
+    group: 'Caisse',
+    links: [
+      { path: '/pos', label: 'Caisse', icon: <ShoppingCartOutlined />, permission: 'sales.create' },
+      { path: '/pos/sales', label: 'Historique de caisse', icon: <CreditCardOutlined />, permission: 'sales.create' },
+    ],
   },
   {
     group: 'Catalogue',
