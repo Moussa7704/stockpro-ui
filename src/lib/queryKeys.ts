@@ -37,4 +37,18 @@ export const queryKeys = {
     list: (query: object) => ['products', 'list', query] as const,
     detail: (id: string) => ['products', 'detail', id] as const,
   },
+  // Tout ce qui touche au stock commence par 'stock' : après un mouvement, on invalide stock.all
+  // (niveaux, alertes, journal et documents se rechargent)
+  stock: {
+    all: ['stock'] as const,
+    levels: (query: object) => ['stock', 'levels', query] as const,
+    alerts: (shopId?: string) => ['stock', 'alerts', shopId ?? 'all'] as const,
+    movements: (query: object) => ['stock', 'movements', query] as const,
+    adjustments: (query: object) => ['stock', 'adjustments', query] as const,
+    adjustment: (id: string) => ['stock', 'adjustment', id] as const,
+    transfers: (query: object) => ['stock', 'transfers', query] as const,
+    transfer: (id: string) => ['stock', 'transfer', id] as const,
+    inventories: (query: object) => ['stock', 'inventories', query] as const,
+    inventory: (id: string) => ['stock', 'inventory', id] as const,
+  },
 }

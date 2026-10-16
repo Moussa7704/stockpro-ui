@@ -14,6 +14,12 @@ import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { MembersPage } from '../features/members/MembersPage'
 import { RolesPage } from '../features/roles/RolesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { AdjustmentsPage } from '../features/stock/AdjustmentsPage'
+import { InventoriesPage } from '../features/stock/InventoriesPage'
+import { InventoryPage } from '../features/stock/InventoryPage'
+import { MovementsPage } from '../features/stock/MovementsPage'
+import { StockLevelsPage } from '../features/stock/StockLevelsPage'
+import { TransfersPage } from '../features/stock/TransfersPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { CompanyRoute, PermissionRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
@@ -63,6 +69,18 @@ export const routes: RouteObject[] = [
                 children: [
                   { path: '/products', element: <ProductsPage /> },
                   { path: '/suppliers', element: <SuppliersPage /> },
+                ],
+              },
+              // Stock : consultation avec stock.view (les actions sont réservées dans chaque écran)
+              {
+                element: <PermissionRoute permission="stock.view" />,
+                children: [
+                  { path: '/stock', element: <StockLevelsPage /> },
+                  { path: '/stock/movements', element: <MovementsPage /> },
+                  { path: '/stock/adjustments', element: <AdjustmentsPage /> },
+                  { path: '/stock/transfers', element: <TransfersPage /> },
+                  { path: '/stock/inventories', element: <InventoriesPage /> },
+                  { path: '/stock/inventories/:id', element: <InventoryPage /> },
                 ],
               },
               {
