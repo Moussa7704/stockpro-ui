@@ -97,3 +97,24 @@ describe('Gardes de navigation', () => {
     expect(screen.getByText('Boutique Centre')).toBeInTheDocument()
   })
 })
+
+describe('Mise en page', () => {
+  it('en-tête et menu hors de la zone qui défile ; le contenu repart en haut à chaque écran', async () => {
+    server.use(shopsHandler())
+    const { router } = renderApp('/', { session: meResponse() })
+
+    await screen.findByRole('heading', { name: 'Bonjour Awa Diop' })
+    const content = document.querySelector('main.ant-layout-content') as HTMLElement
+    expect(content).toHaveClass('overflow-y-auto')
+    // L'en-tête (menu utilisateur) et le menu ne sont pas dans le contenu : ils restent visibles
+    const nav = screen.getByRole('navigation', { name: 'Menu principal' })
+    expect(nav).toHaveClass('overflow-y-auto')
+    expect(content).not.toContainElement(screen.getByRole('button', { name: 'Menu utilisateur' }))
+    expect(content).not.toContainElement(nav)
+
+    content.scrollTop = 400
+    await router.navigate('/account')
+    await screen.findByRole('heading', { name: /Mon compte/ })
+    expect(content.scrollTop).toBe(0)
+  })
+})
