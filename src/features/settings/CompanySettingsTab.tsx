@@ -1,0 +1,122 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Alert, App, Button, Card, Form, Input, InputNumber, Select, Skeleton, Typography } from 'antd'
+import { useMemo } from 'react'
+import { queryKeys } from '../../lib/queryKeys'
+import { getErrorMessage } from '../../services/api'
+import * as companyService from '../../services/company.service'
+import { reloadSession } from '../../store/authSlice'
+import { useAppDispatch } from '../../store/hooks'
+import type { Company } from '../../types/settings'
+import { currencyLabel } from '../../utils/format'
+import { useCompany } from './queries'
+
+interface CompanyValues {
+  name: string
+  timezone: string
+  maxCashierDiscountPercent: number | null
+}
+
+/** Fuseaux proposés : l'Afrique d'abord (clientèle visée), puis tous les autres. */
+function timezoneOptions(current: string) {
+  const all = Intl.supportedValuesOf('timeZone')
+  const zones = all.includes(current) ? all : [current, ...all]
+  const africa = zones.filter((zone) => zone.startsWith('Africa/'))
+  const others = zones.filter((zone) => !zone.startsWith('Africa/'))
+  const toOption = (zone: string) => ({ value: zone, label: zone.replaceAll('_', ' ') })
+  return [
+    { label: 'Afrique', options: africa.map(toOption) },
+    { label: 'Autres fuseaux', options: others.map(toOption) },
+  ]
+}
+
+function CompanyForm({ company }: { company: Company }) {
+  const { message } = App.useApp()
+  const queryClient = useQueryClient()
+  const dispatch = useAppDispatch()
+  const [form] = Form.useForm<CompanyValues>()
+  const options = useMemo(() => timezoneOptions(company.timezone), [company.timezone])
+
+  const save = useMutation({
+    mutationFn: (values: CompanyValues) =>
+      companyService.updateCompany({
+        name: values.name,
+        timezone: values.timezone,
+        settings: { maxCashierDiscountPercent: values.maxCashierDiscountPercent ?? 0 },
+      }),
+    onSuccess: ({ company: saved }) => {
+      queryClient.setQueryData(queryKeys.company, saved)
+      // Le nom de l'entreprise s'affiche dans l'en-tête et le sélecteur : il vient de la session
+      if (saved.name !== company.name) void dispatch(reloadSession())
+      message.success('Paramètres de l’entreprise enregistrés')
+    },
+  })
+
+  return (
+    <Form<CompanyValues>
+      form={form}
+      layout="vertical"
+      requiredMark={false}
+      initialValues={{
+        name: company.name,
+        timezone: company.timezone,
+        maxCashierDiscountPercent: company.settings.maxCashierDiscountPercent ?? 0,
+      }}
+      onFinish={(values) => save.mutate(values)}
+      className="max-w-xl"
+    >
+      <Form.Item
+        name="name"
+        label="Nom de l’entreprise"
+        rules={[
+          { required: true, whitespace: true, message: 'Indiquez le nom' },
+          { min: 2, max: 150, message: 'Entre 2 et 150 caractères' },
+        ]}
+      >
+        <Input />
+      </Form.Item>
+
+      <Form.Item label="Devise" extra="Une seule devise pour toute l’entreprise : elle ne se modifie pas.">
+        <Input value={`${currencyLabel(company.currency)} (${company.currency})`} disabled />
+      </Form.Item>
+
+      <Form.Item
+        name="timezone"
+        label="Fuseau horaire"
+        extra="Les journées des rapports et des relevés suivent ce fuseau."
+        rules={[{ required: true, message: 'Choisissez un fuseau horaire' }]}
+      >
+        <Select showSearch={{ optionFilterProp: 'label' }} options={options} aria-label="Fuseau horaire" />
+      </Form.Item>
+
+      <Form.Item
+        name="maxCashierDiscountPercent"
+        label="Remise maximale d’un caissier"
+        extra="Au-delà, il faut la permission « Accorder des remises » (gérant, propriétaire…)."
+      >
+        <InputNumber min={0} max={100} step={1} suffix="%" className="w-40" aria-label="Remise maximale d’un caissier" />
+      </Form.Item>
+
+      {save.error && <Alert type="error" title={getErrorMessage(save.error)} showIcon className="mb-4" />}
+
+      <Button type="primary" htmlType="submit" loading={save.isPending}>
+        Enregistrer
+      </Button>
+    </Form>
+  )
+}
+
+/** Onglet "Entreprise" : nom, fuseau horaire, plafond de remise en caisse. */
+export function CompanySettingsTab() {
+  const { data: company, error } = useCompany()
+
+  return (
+    <Card>
+      <Typography.Paragraph type="secondary">
+        Ces réglages s’appliquent à toutes les boutiques de l’entreprise.
+      </Typography.Paragraph>
+      {error && <Alert type="error" title={getErrorMessage(error)} showIcon />}
+      {/* key : le formulaire repart des valeurs enregistrées si l'entreprise change */}
+      {company ? <CompanyForm key={company.updatedAt} company={company} /> : !error && <Skeleton active />}
+    </Card>
+  )
+}

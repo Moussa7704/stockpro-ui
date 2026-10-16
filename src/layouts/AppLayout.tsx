@@ -1,19 +1,25 @@
 import {
+  AuditOutlined,
   BankOutlined,
   DashboardOutlined,
+  DownOutlined,
   LogoutOutlined,
   SafetyOutlined,
+  SettingOutlined,
   ShopOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { App, Avatar, Button, Layout, Menu, Select, Typography } from 'antd'
+import { App, Avatar, Button, Dropdown, Layout, Menu, Select, Typography } from 'antd'
 import type { MenuProps } from 'antd'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useActiveShop } from '../hook/useActiveShop'
 import { useAuth } from '../hook/useAuth'
 import { getErrorMessage } from '../services/api'
+import type { Permission } from '../types/access'
+
+const { Header, Sider, Content } = Layout
 
 /** Boutique de travail (caisse, stock…) : choix mémorisé par entreprise. */
 function ShopSelector() {
@@ -39,20 +45,46 @@ function ShopSelector() {
   )
 }
 
-const { Header, Content } = Layout
+interface NavLink {
+  path: string
+  label: string
+  icon: ReactNode
+  /** Absente : visible par tout membre */
+  permission?: Permission
+}
+
+// Menu latéral, par grands domaines. Chaque module ajoutera ses écrans ici.
+const NAVIGATION: { group: string | null; links: NavLink[] }[] = [
+  {
+    group: null,
+    links: [{ path: '/', label: 'Tableau de bord', icon: <DashboardOutlined /> }],
+  },
+  {
+    group: 'Administration',
+    links: [
+      { path: '/members', label: 'Équipe', icon: <TeamOutlined />, permission: 'users.manage' },
+      { path: '/roles', label: 'Rôles', icon: <SafetyOutlined />, permission: 'roles.manage' },
+      { path: '/settings', label: 'Paramètres', icon: <SettingOutlined />, permission: 'company.manage' },
+      { path: '/audit', label: 'Journal d’audit', icon: <AuditOutlined />, permission: 'audit.view' },
+    ],
+  },
+]
+
+/** Lien actif : le plus long chemin qui commence l'URL (/settings reste actif sur /settings?onglet=…). */
+function selectedKey(pathname: string, paths: string[]): string {
+  return (
+    paths
+      .filter((path) => (path === '/' ? pathname === '/' : pathname === path || pathname.startsWith(`${path}/`)))
+      .sort((a, b) => b.length - a.length)[0] ?? ''
+  )
+}
 
 export function AppLayout() {
   const { user, companies, activeCompany, can, switchCompany, logout } = useAuth()
   const { message } = App.useApp()
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const [loggingOut, setLoggingOut] = useState(false)
   const [switching, setSwitching] = useState(false)
-
-  async function handleLogout() {
-    setLoggingOut(true)
-    await logout()
-  }
 
   async function handleSwitch(companyId: string) {
     setSwitching(true)
@@ -68,30 +100,36 @@ export function AppLayout() {
   }
 
   // Liens selon les permissions (les pages et l'API sont protégées de toute façon)
-  const menuItems: MenuProps['items'] = [
-    { key: '/', icon: <DashboardOutlined />, label: <Link to="/">Tableau de bord</Link> },
-    ...(can('users.manage')
-      ? [{ key: '/members', icon: <TeamOutlined />, label: <Link to="/members">Équipe</Link> }]
-      : []),
-    ...(can('roles.manage')
-      ? [{ key: '/roles', icon: <SafetyOutlined />, label: <Link to="/roles">Rôles</Link> }]
-      : []),
-    { key: '/account', icon: <UserOutlined />, label: <Link to="/account">Mon compte</Link> },
+  const visibleGroups = NAVIGATION.map((section) => ({
+    ...section,
+    links: section.links.filter((link) => !link.permission || can(link.permission)),
+  })).filter((section) => section.links.length > 0)
+
+  type MenuItem = NonNullable<MenuProps['items']>[number]
+  const toItem = (link: NavLink): MenuItem => ({ key: link.path, icon: link.icon, label: <Link to={link.path}>{link.label}</Link> })
+  const menuItems = visibleGroups.flatMap<MenuItem>((section) =>
+    section.group
+      ? [{ type: 'group', key: section.group, label: section.group, children: section.links.map(toItem) }]
+      : section.links.map(toItem),
+  )
+  const allPaths = visibleGroups.flatMap((section) => section.links.map((link) => link.path))
+
+  const userMenu: MenuProps['items'] = [
+    { key: 'account', icon: <UserOutlined />, label: <Link to="/account">Mon compte</Link> },
+    { type: 'divider' },
+    { key: 'logout', icon: <LogoutOutlined />, label: 'Se déconnecter', danger: true, onClick: () => void logout() },
   ]
 
   return (
     <Layout className="min-h-full">
-      <Header className="flex items-center gap-6 bg-white px-6 shadow-sm">
-        <Link to="/" className="text-lg font-bold text-brand">
+      <Sider theme="light" width={232} breakpoint="lg" collapsedWidth={0} className="border-r border-slate-200">
+        <Link to="/" className="flex h-16 items-center px-6 text-lg font-bold text-brand">
           StockPro
         </Link>
-        <Menu
-          mode="horizontal"
-          selectedKeys={[pathname]}
-          items={menuItems}
-          className="min-w-0 flex-1 border-b-0"
-        />
-        <div className="flex items-center gap-3">
+        <Menu mode="inline" selectedKeys={[selectedKey(pathname, allPaths)]} items={menuItems} className="border-e-0" />
+      </Sider>
+      <Layout>
+        <Header className="flex items-center justify-end gap-3 bg-white px-6 shadow-sm">
           {companies.length > 1 ? (
             <Select
               value={activeCompany?.id}
@@ -104,23 +142,23 @@ export function AppLayout() {
               aria-label="Entreprise active"
             />
           ) : (
-            <Typography.Text type="secondary" className="hidden sm:inline">
-              {activeCompany?.name}
+            <Typography.Text type="secondary" className="hidden items-center gap-1 sm:inline-flex">
+              <BankOutlined /> {activeCompany?.name}
             </Typography.Text>
           )}
           <ShopSelector />
-          <Avatar icon={<UserOutlined />} />
-          <Typography.Text strong className="hidden sm:inline">
-            {user?.name}
-          </Typography.Text>
-          <Button icon={<LogoutOutlined />} onClick={handleLogout} loading={loggingOut}>
-            <span className="hidden md:inline">Se déconnecter</span>
-          </Button>
-        </div>
-      </Header>
-      <Content className="p-6">
-        <Outlet />
-      </Content>
+          <Dropdown menu={{ items: userMenu }} trigger={['click']}>
+            <Button type="text" className="flex items-center gap-2" aria-label="Menu utilisateur">
+              <Avatar size="small" icon={<UserOutlined />} />
+              <span className="hidden sm:inline">{user?.name}</span>
+              <DownOutlined className="text-xs" />
+            </Button>
+          </Dropdown>
+        </Header>
+        <Content className="p-6">
+          <Outlet />
+        </Content>
+      </Layout>
     </Layout>
   )
 }
