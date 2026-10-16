@@ -1,7 +1,6 @@
 import { LockOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Card, Descriptions, Form, Input, Tag, Typography } from 'antd'
 import { useState } from 'react'
-import { ROLES } from '../../constants/roles'
 import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
 import * as authService from '../../services/auth.service'
@@ -14,10 +13,8 @@ interface ChangePasswordValues {
 }
 
 export function AccountPage() {
-  const { user } = useAuth()
+  const { user, activeCompany } = useAuth()
   if (!user) return null
-
-  const role = ROLES[user.role]
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -29,9 +26,11 @@ export function AccountPage() {
         <Descriptions column={1}>
           <Descriptions.Item label="Nom">{user.name}</Descriptions.Item>
           <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
-          <Descriptions.Item label="Rôle">
-            <Tag color={role.color}>{role.label}</Tag>
-          </Descriptions.Item>
+          {activeCompany && (
+            <Descriptions.Item label={`Rôle chez ${activeCompany.name}`}>
+              <Tag color="blue">{activeCompany.role.name}</Tag>
+            </Descriptions.Item>
+          )}
         </Descriptions>
       </Card>
 

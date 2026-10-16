@@ -1,14 +1,40 @@
-export type UserRole = 'admin' | 'manager' | 'employee'
+import type { Permission } from './access'
 
 export interface User {
   id: string
   name: string
   email: string
-  role: UserRole
+  // Administrateur de la plateforme SaaS (back-office), indépendant des entreprises
+  isPlatformAdmin: boolean
   // true tant qu'un compte invité n'a pas encore choisi son mot de passe
   invitationPending: boolean
   createdAt: string
   updatedAt: string
+}
+
+// Rôle d'un membre dans une entreprise (rôle système ou personnalisé)
+export interface RoleRef {
+  code: string
+  name: string
+}
+
+// Entreprise dont l'utilisateur est membre (sélecteur d'entreprise)
+export interface CompanySummary {
+  id: string
+  name: string
+  slug: string
+  role: RoleRef
+}
+
+// Droits dans l'entreprise active : servent à afficher menus et boutons.
+// Confort d'affichage uniquement : l'API revérifie tout.
+export interface ActiveCompany {
+  id: string
+  name: string
+  role: RoleRef
+  permissions: Permission[]
+  allShops: boolean
+  shopIds: string[]
 }
 
 // POST /api/auth/login : mot de passe correct → un code est envoyé par email,
@@ -23,6 +49,9 @@ export interface LoginChallengeResponse {
 // POST /api/auth/login/otp : code correct → session ouverte
 export interface LoginOtpResponse {
   user: User
+  companies: CompanySummary[]
+  // Choisie automatiquement s'il n'y a qu'une entreprise ; sinon null → POST /auth/company
+  activeCompanyId: string | null
   accessToken: string
 }
 
@@ -32,7 +61,7 @@ export interface ResendOtpResponse {
   expiresInSeconds: number
 }
 
-// POST /api/auth/refresh
+// POST /api/auth/refresh et POST /api/auth/company
 export interface RefreshResponse {
   accessToken: string
 }
@@ -40,6 +69,8 @@ export interface RefreshResponse {
 // GET /api/auth/me
 export interface MeResponse {
   user: User
+  companies: CompanySummary[]
+  activeCompany: ActiveCompany | null
 }
 
 // POST /api/auth/password/check : à quoi sert le lien reçu par email

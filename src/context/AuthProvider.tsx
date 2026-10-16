@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { refreshAccessToken, setAccessToken, setSessionExpiredHandler } from '../services/api'
 import * as authService from '../services/auth.service'
-import type { User } from '../types/auth'
+import type { Permission } from '../types/access'
+import type { MeResponse } from '../types/auth'
 import { AuthContext, type AuthContextValue, type AuthStatus, type OtpChallenge } from './AuthContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  // user, entreprises et droits viennent tous de GET /auth/me
+  const [session, setSession] = useState<MeResponse | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
-
-  const signIn = useCallback((nextUser: User, accessToken: string) => {
-    setAccessToken(accessToken)
-    setUser(nextUser)
-    setStatus('authenticated')
-  }, [])
 
   const clearSession = useCallback(() => {
     setAccessToken(null)
-    setUser(null)
+    setSession(null)
     setStatus('anonymous')
+  }, [])
+
+  // Le token est déjà en mémoire (api.ts) : on charge l'utilisateur et ses droits
+  const loadSession = useCallback(async () => {
+    const me = await authService.getMe()
+    setSession(me)
+    setStatus('authenticated')
   }, [])
 
   // Au chargement : le cookie refreshToken (httpOnly) permet de retrouver la session
@@ -31,8 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       try {
-        const { user: me } = await authService.getMe()
-        if (!cancelled) signIn(me, token)
+        const me = await authService.getMe()
+        if (!cancelled) {
+          setSession(me)
+          setStatus('authenticated')
+        }
       } catch {
         if (!cancelled) clearSession()
       }
@@ -42,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [clearSession, signIn])
+  }, [clearSession])
 
   // Session expirée pendant l'utilisation (refresh refusé) : retour à l'écran de connexion
   useEffect(() => {
@@ -58,15 +64,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyOtp = useCallback(
     async (challengeToken: string, code: string) => {
-      const result = await authService.loginWithOtp({ challengeToken, code })
-      signIn(result.user, result.accessToken)
+      const { accessToken } = await authService.loginWithOtp({ challengeToken, code })
+      setAccessToken(accessToken)
+      // La réponse du login ne contient pas les permissions : on les lit sur /me
+      await loadSession()
     },
-    [signIn],
+    [loadSession],
   )
 
   const resendOtp = useCallback(async (challengeToken: string) => {
     await authService.resendOtp(challengeToken)
   }, [])
+
+  const switchCompany = useCallback(
+    async (companyId: string) => {
+      const { accessToken } = await authService.switchCompany(companyId)
+      setAccessToken(accessToken)
+      await loadSession()
+    },
+    [loadSession],
+  )
 
   const logout = useCallback(async () => {
     try {
@@ -77,10 +94,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession])
 
-  const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, verifyOtp, resendOtp, logout }),
-    [user, status, login, verifyOtp, resendOtp, logout],
-  )
+  const value = useMemo<AuthContextValue>(() => {
+    const permissions = new Set<Permission>(session?.activeCompany?.permissions ?? [])
+    return {
+      user: session?.user ?? null,
+      status,
+      companies: session?.companies ?? [],
+      activeCompany: session?.activeCompany ?? null,
+      can: (permission) => permissions.has(permission),
+      login,
+      verifyOtp,
+      resendOtp,
+      switchCompany,
+      logout,
+    }
+  }, [session, status, login, verifyOtp, resendOtp, switchCompany, logout])
 
   return <AuthContext value={value}>{children}</AuthContext>
 }

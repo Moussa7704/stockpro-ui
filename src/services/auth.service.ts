@@ -4,11 +4,12 @@ import type {
   MeResponse,
   MessageResponse,
   PasswordTokenInfo,
+  RefreshResponse,
   ResendOtpResponse,
 } from '../types/auth'
 import { api } from './api'
 
-// Pas d'inscription publique : les comptes sont créés par un admin (users.service.ts)
+// Pas d'inscription publique : le propriétaire invite son équipe (members.service.ts)
 
 // Étape 1 : email + mot de passe → code envoyé par email
 export function login(input: { email: string; password: string }) {
@@ -33,6 +34,11 @@ export function logout() {
 
 export function getMe() {
   return api<MeResponse>('/auth/me')
+}
+
+/** Change l'entreprise active : nouvel access token, la session retient ce choix. */
+export function switchCompany(companyId: string) {
+  return api<RefreshResponse>('/auth/company', { method: 'POST', body: { companyId } })
 }
 
 // ---------- Mot de passe ----------

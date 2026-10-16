@@ -1,35 +1,54 @@
-import { MailOutlined, ReloadOutlined, UserAddOutlined } from '@ant-design/icons'
-import { Alert, App, Button, Card, Select, Table, Tag, Tooltip, Typography } from 'antd'
+import { EditOutlined, MailOutlined, ReloadOutlined, SafetyOutlined, UserAddOutlined } from '@ant-design/icons'
+import { Alert, App, Button, Card, Space, Table, Tag, Tooltip, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
-import { ROLES, ROLE_OPTIONS } from '../../constants/roles'
-import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
-import * as usersService from '../../services/users.service'
-import type { User, UserRole } from '../../types/auth'
-import { InviteUserModal } from './InviteUserModal'
+import * as membersService from '../../services/members.service'
+import * as rolesService from '../../services/roles.service'
+import * as shopsService from '../../services/shops.service'
+import type { Member, PermissionGroup, Role, ShopSummary } from '../../types/access'
+import { MemberFormModal } from './MemberFormModal'
+import { MemberPermissionsDrawer } from './MemberPermissionsDrawer'
 
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' })
 
-/** Gestion des comptes (admins uniquement) : invitation, rôles, renvoi d'invitation. */
-export function UsersPage() {
-  const { user: me } = useAuth()
+interface PageData {
+  members: Member[]
+  roles: Role[]
+  shops: ShopSummary[]
+  groups: PermissionGroup[]
+}
+
+function fetchPageData(): Promise<PageData> {
+  return Promise.all([
+    membersService.listMembers(),
+    rolesService.listRoles(),
+    shopsService.listShops(),
+    rolesService.getPermissionCatalog(),
+  ]).then(([{ members }, { roles }, { shops }, { groups }]) => ({ members, roles, shops, groups }))
+}
+
+/**
+ * Équipe de l'entreprise (permission users.manage) : invitation, rôle, boutiques, statut
+ * et ajustement des droits. `editable` (calculé par le serveur) dit qui on peut modifier.
+ */
+export function MembersPage() {
   const { message } = App.useApp()
 
-  const [users, setUsers] = useState<User[]>([])
+  const [data, setData] = useState<PageData>({ members: [], roles: [], shops: [], groups: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [inviteOpen, setInviteOpen] = useState(false)
-  // Ligne en cours de modification (rôle ou renvoi) : affiche un chargement sur elle seule
+  // undefined : modal fermée ; null : invitation ; Member : modification
+  const [formMember, setFormMember] = useState<Member | null | undefined>(undefined)
+  const [permissionsMember, setPermissionsMember] = useState<Member | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   // Applique le résultat d'un chargement (sauf si la page a été quittée entre-temps)
-  const fetchUsers = useCallback((isCancelled: () => boolean = () => false) => {
-    return usersService
-      .listUsers()
-      .then(({ users: list }) => {
+  const load = useCallback((isCancelled: () => boolean = () => false) => {
+    return fetchPageData()
+      .then((result) => {
         if (!isCancelled()) {
-          setUsers(list)
+          setData(result)
           setError(null)
         }
       })
@@ -40,24 +59,22 @@ export function UsersPage() {
   // Premier chargement (loading vaut déjà true au départ)
   useEffect(() => {
     let cancelled = false
-    void fetchUsers(() => cancelled)
+    void load(() => cancelled)
     return () => {
       cancelled = true
     }
-  }, [fetchUsers])
+  }, [load])
 
-  // Bouton "Actualiser"
-  function loadUsers() {
+  function reload() {
     setLoading(true)
-    void fetchUsers()
+    void load()
   }
 
-  async function handleRoleChange(target: User, role: UserRole) {
+  async function handleResend(target: Member) {
     setBusyId(target.id)
     try {
-      const { user: updated } = await usersService.updateUserRole(target.id, role)
-      setUsers((list) => list.map((item) => (item.id === updated.id ? updated : item)))
-      message.success(`${updated.name} est maintenant ${ROLES[role].label.toLowerCase()}`)
+      await membersService.resendInvitation(target.id)
+      message.success(`Invitation renvoyée à ${target.user.email}`)
     } catch (err) {
       message.error(getErrorMessage(err))
     } finally {
@@ -65,56 +82,67 @@ export function UsersPage() {
     }
   }
 
-  async function handleResend(target: User) {
-    setBusyId(target.id)
-    try {
-      await usersService.resendInvitation(target.id)
-      message.success(`Invitation renvoyée à ${target.email}`)
-    } catch (err) {
-      message.error(getErrorMessage(err))
-    } finally {
-      setBusyId(null)
-    }
+  function handleSaved(saved: Member, created: boolean) {
+    setData((current) => ({
+      ...current,
+      members: created
+        ? [saved, ...current.members]
+        : current.members.map((item) => (item.id === saved.id ? saved : item)),
+    }))
+    setFormMember(undefined)
+    message.success(created ? `Invitation envoyée à ${saved.user.email}` : `${saved.user.name} mis à jour`)
   }
 
-  function handleInvited(created: User) {
-    setUsers((list) => [created, ...list])
-    setInviteOpen(false)
-    message.success(`Invitation envoyée à ${created.email}`)
-  }
-
-  const columns: TableColumnsType<User> = [
+  const columns: TableColumnsType<Member> = [
     {
-      title: 'Nom',
-      dataIndex: 'name',
-      sorter: (a, b) => a.name.localeCompare(b.name, 'fr'),
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
+      title: 'Membre',
+      key: 'user',
+      sorter: (a, b) => a.user.name.localeCompare(b.user.name, 'fr'),
+      render: (_, record) => (
+        <div className="flex flex-col">
+          <Typography.Text strong>{record.user.name}</Typography.Text>
+          <Typography.Text type="secondary" className="text-xs">
+            {record.user.email}
+          </Typography.Text>
+        </div>
+      ),
     },
     {
       title: 'Rôle',
-      dataIndex: 'role',
-      width: 190,
-      filters: ROLE_OPTIONS.map(({ value, label }) => ({ value, text: label })),
-      onFilter: (value, record) => record.role === value,
-      render: (role: UserRole, record) =>
-        // Un admin ne peut pas changer son propre rôle (le serveur le refuse aussi)
-        record.id === me?.id ? (
-          <Tooltip title="Vous ne pouvez pas modifier votre propre rôle">
-            <Tag color={ROLES[role].color}>{ROLES[role].label}</Tag>
-          </Tooltip>
+      key: 'role',
+      width: 200,
+      filters: data.roles.map((role) => ({ value: role.code, text: role.name })),
+      onFilter: (value, record) => record.role.code === value,
+      render: (_, record) => {
+        const { grants, revokes } = record.permissionOverrides
+        const adjusted = grants.length + revokes.length
+        return (
+          <Space size={4} wrap>
+            <Tag color={record.role.code === 'owner' ? 'gold' : 'blue'}>{record.role.name}</Tag>
+            {adjusted > 0 && (
+              <Tooltip title={`${grants.length} ajout(s), ${revokes.length} retrait(s) par rapport au rôle`}>
+                <Tag color="purple">droits ajustés</Tag>
+              </Tooltip>
+            )}
+          </Space>
+        )
+      },
+    },
+    {
+      title: 'Boutiques',
+      key: 'shops',
+      responsive: ['md'],
+      render: (_, record) =>
+        record.allShops ? (
+          <Tag>Toutes</Tag>
+        ) : record.shops.length === 0 ? (
+          <Typography.Text type="secondary">Aucune</Typography.Text>
         ) : (
-          <Select<UserRole>
-            value={role}
-            options={ROLE_OPTIONS}
-            onChange={(value) => handleRoleChange(record, value)}
-            loading={busyId === record.id}
-            disabled={busyId === record.id}
-            className="w-40"
-            aria-label={`Rôle de ${record.name}`}
-          />
+          <Space size={4} wrap>
+            {record.shops.map((shop) => (
+              <Tag key={shop.id}>{shop.name}</Tag>
+            ))}
+          </Space>
         ),
     },
     {
@@ -122,35 +150,58 @@ export function UsersPage() {
       key: 'status',
       width: 170,
       render: (_, record) =>
-        record.invitationPending ? (
+        record.status === 'disabled' ? (
+          <Tag>Désactivé</Tag>
+        ) : record.user.invitationPending ? (
           <Tag color="orange">Invitation en attente</Tag>
         ) : (
           <Tag color="green">Actif</Tag>
         ),
     },
     {
-      title: 'Créé le',
+      title: 'Ajouté le',
       dataIndex: 'createdAt',
-      width: 130,
-      responsive: ['md'],
+      width: 120,
+      responsive: ['lg'],
       sorter: (a, b) => a.createdAt.localeCompare(b.createdAt),
       render: (value: string) => dateFormatter.format(new Date(value)),
     },
     {
       title: '',
       key: 'actions',
-      width: 200,
-      render: (_, record) =>
-        record.invitationPending && (
-          <Button
-            icon={<MailOutlined />}
-            size="small"
-            onClick={() => handleResend(record)}
-            loading={busyId === record.id}
-          >
-            Renvoyer l’invitation
-          </Button>
-        ),
+      width: 150,
+      render: (_, record) => (
+        <Space size={4}>
+          <Tooltip title="Droits">
+            <Button
+              icon={<SafetyOutlined />}
+              size="small"
+              onClick={() => setPermissionsMember(record)}
+              aria-label={`Droits de ${record.user.name}`}
+            />
+          </Tooltip>
+          <Tooltip title={record.editable ? 'Modifier' : 'Vous ne pouvez pas modifier ce membre'}>
+            <Button
+              icon={<EditOutlined />}
+              size="small"
+              disabled={!record.editable}
+              onClick={() => setFormMember(record)}
+              aria-label={`Modifier ${record.user.name}`}
+            />
+          </Tooltip>
+          {record.user.invitationPending && record.editable && (
+            <Tooltip title="Renvoyer l’invitation">
+              <Button
+                icon={<MailOutlined />}
+                size="small"
+                loading={busyId === record.id}
+                onClick={() => handleResend(record)}
+                aria-label={`Renvoyer l’invitation à ${record.user.name}`}
+              />
+            </Tooltip>
+          )}
+        </Space>
+      ),
     },
   ]
 
@@ -158,14 +209,14 @@ export function UsersPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Typography.Title level={2} className="mb-0">
-          Utilisateurs
+          Équipe
         </Typography.Title>
         <div className="flex gap-2">
-          <Button icon={<ReloadOutlined />} onClick={loadUsers} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={reload} loading={loading}>
             Actualiser
           </Button>
-          <Button type="primary" icon={<UserAddOutlined />} onClick={() => setInviteOpen(true)}>
-            Inviter un utilisateur
+          <Button type="primary" icon={<UserAddOutlined />} onClick={() => setFormMember(null)}>
+            Inviter un membre
           </Button>
         </div>
       </div>
@@ -173,17 +224,36 @@ export function UsersPage() {
       {error && <Alert type="error" title={error} showIcon />}
 
       <Card styles={{ body: { padding: 0 } }}>
-        <Table<User>
+        <Table<Member>
           rowKey="id"
           columns={columns}
-          dataSource={users}
+          dataSource={data.members}
           loading={loading}
           pagination={{ pageSize: 20, hideOnSinglePage: true }}
           scroll={{ x: 800 }}
         />
       </Card>
 
-      <InviteUserModal open={inviteOpen} onCancel={() => setInviteOpen(false)} onInvited={handleInvited} />
+      <MemberFormModal
+        key={formMember?.id ?? 'new'}
+        open={formMember !== undefined}
+        member={formMember ?? null}
+        roles={data.roles}
+        shops={data.shops}
+        onCancel={() => setFormMember(undefined)}
+        onSaved={handleSaved}
+      />
+
+      {permissionsMember && (
+        <MemberPermissionsDrawer
+          key={permissionsMember.id}
+          member={permissionsMember}
+          groups={data.groups}
+          onClose={() => setPermissionsMember(null)}
+          // Les droits effectifs et le badge "droits ajustés" de la liste changent
+          onSaved={() => void load()}
+        />
+      )}
     </div>
   )
 }
