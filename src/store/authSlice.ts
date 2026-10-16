@@ -73,6 +73,13 @@ export function switchCompany(companyId: string): AppThunk<Promise<void>> {
   }
 }
 
+/** Relit la session (nom de l'entreprise, droits) après un changement qui la concerne. */
+export function reloadSession(): AppThunk<Promise<void>> {
+  return async (dispatch) => {
+    dispatch(sessionLoaded(await authService.getMe()))
+  }
+}
+
 export function logout(): AppThunk<Promise<void>> {
   return async (dispatch, _getState, { queryClient }) => {
     try {

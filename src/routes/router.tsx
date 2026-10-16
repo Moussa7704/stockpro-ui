@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import { AccountPage } from '../features/account/AccountPage'
+import { AuditLogPage } from '../features/audit/AuditLogPage'
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
@@ -8,6 +9,7 @@ import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { MembersPage } from '../features/members/MembersPage'
 import { RolesPage } from '../features/roles/RolesPage'
+import { SettingsPage } from '../features/settings/SettingsPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { CompanyRoute, PermissionRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
@@ -56,6 +58,14 @@ export const routes: RouteObject[] = [
               {
                 element: <PermissionRoute permission="roles.manage" />,
                 children: [{ path: '/roles', element: <RolesPage /> }],
+              },
+              {
+                element: <PermissionRoute permission="company.manage" />,
+                children: [{ path: '/settings', element: <SettingsPage /> }],
+              },
+              {
+                element: <PermissionRoute permission="audit.view" />,
+                children: [{ path: '/audit', element: <AuditLogPage /> }],
               },
             ],
           },
