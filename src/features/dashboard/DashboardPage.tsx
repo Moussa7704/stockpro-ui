@@ -14,6 +14,7 @@ import * as reportsService from '../../services/reports.service'
 import type { TopProduct } from '../../types/reports'
 import { formatDate, formatMoney, formatQuantity } from '../../utils/format'
 import { ShopFilter } from '../stock/ShopFilter'
+import { RestockCard } from './RestockCard'
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
 
@@ -44,13 +45,14 @@ function Welcome() {
           </Link>
         ))}
       </div>
+      {can('stock.view') && <RestockCard />}
     </div>
   )
 }
 
 /** Tableau de bord (reports.view) : la journée, le mois, le stock, les créances et les caisses. */
 function Overview() {
-  const { user } = useAuth()
+  const { user, can } = useAuth()
   const [shopId, setShopId] = useState<string | undefined>()
   const { data: dashboard, error } = useQuery({
     queryKey: queryKeys.reports.dashboard(shopId),
@@ -99,7 +101,7 @@ function Overview() {
               value={formatMoney(dashboard.stock.value)}
               hint={
                 dashboard.stock.lowStockCount + dashboard.stock.outOfStockCount > 0 ? (
-                  <Link to="/stock">
+                  <Link to="/stock?vue=alertes">
                     {dashboard.stock.lowStockCount} en stock bas · {dashboard.stock.outOfStockCount} en rupture
                   </Link>
                 ) : (
@@ -152,6 +154,8 @@ function Overview() {
               />
             </Card>
           </div>
+
+          {can('stock.view') && <RestockCard shopId={shopId} />}
         </>
       )}
     </div>
