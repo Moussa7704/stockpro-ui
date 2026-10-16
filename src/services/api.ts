@@ -1,3 +1,4 @@
+import axios, { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 import type { RefreshResponse } from '../types/auth'
 
 // L'access token reste en mémoire (pas de localStorage) : un script injecté (XSS)
@@ -11,11 +12,16 @@ export function setAccessToken(token: string | null): void {
   accessToken = token
 }
 
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
 export function setSessionExpiredHandler(handler: (() => void) | null): void {
   onSessionExpired = handler
 }
 
 export class ApiError extends Error {
+  /** 0 : le serveur n'a pas répondu (réseau coupé, API arrêtée…) */
   status: number
   details?: unknown
 
@@ -33,12 +39,10 @@ export class ApiError extends Error {
 let refreshPromise: Promise<string | null> | null = null
 
 export function refreshAccessToken(): Promise<string | null> {
-  refreshPromise ??= fetch('/api/auth/refresh', { method: 'POST' })
-    .then(async (res) => {
-      if (!res.ok) return null
-      const data = (await res.json()) as RefreshResponse
-      return data.accessToken
-    })
+  // axios "nu" : surtout pas l'instance http, dont l'intercepteur rappellerait /refresh en boucle
+  refreshPromise ??= axios
+    .post<RefreshResponse>('/api/auth/refresh')
+    .then((res) => res.data.accessToken)
     .catch(() => null)
     .then((token) => {
       accessToken = token
@@ -51,43 +55,72 @@ export function refreshAccessToken(): Promise<string | null> {
   return refreshPromise
 }
 
-interface ApiOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-  body?: unknown
+/** Instance axios de l'API : même origine (proxy Vite en dev), le cookie de session suit tout seul. */
+export const http = axios.create({ baseURL: '/api' })
+
+interface RetriableConfig extends InternalAxiosRequestConfig {
+  _retried?: boolean
 }
 
-export async function api<T>(path: string, options: ApiOptions = {}, retry = true): Promise<T> {
-  const headers: Record<string, string> = {}
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json'
+http.interceptors.request.use((config) => {
+  if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`)
+  return config
+})
 
-  const sentToken = accessToken
-  if (sentToken) headers.Authorization = `Bearer ${sentToken}`
+/** Format d'erreur du serveur : { error: { message, details } } → ApiError lisible. */
+function toApiError(error: unknown): ApiError {
+  if (error instanceof ApiError) return error
+  if (error instanceof AxiosError && error.response) {
+    const body = error.response.data as { error?: { message?: string; details?: unknown } } | null
+    return new ApiError(error.response.status, body?.error?.message ?? 'Erreur inattendue du serveur', body?.error?.details)
+  }
+  return new ApiError(0, 'Impossible de joindre le serveur.')
+}
 
-  const res = await fetch(`/api${path}`, {
-    method: options.method ?? 'GET',
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  })
+http.interceptors.response.use(undefined, async (error: unknown) => {
+  const config = error instanceof AxiosError ? (error.config as RetriableConfig | undefined) : undefined
+  const sentToken = config?.headers?.get?.('Authorization')
 
   // 401 alors qu'on avait envoyé un token : il a sûrement expiré (15 min).
   // On le renouvelle une seule fois puis on rejoue la requête.
-  if (res.status === 401 && sentToken && retry) {
+  if (error instanceof AxiosError && error.response?.status === 401 && config && sentToken && !config._retried) {
+    config._retried = true
     const newToken = await refreshAccessToken()
-    if (newToken) return api<T>(path, options, false)
+    if (newToken) {
+      config.headers = AxiosHeaders.from(config.headers).set('Authorization', `Bearer ${newToken}`)
+      return http(config)
+    }
     onSessionExpired?.()
   }
+  throw toApiError(error)
+})
 
-  if (res.status === 204) return undefined as T
+/**
+ * Clé d'idempotence d'une opération sensible (vente, retour, règlement) : générée UNE fois par
+ * opération et renvoyée telle quelle si on rejoue la requête après une coupure réseau.
+ */
+export function newIdempotencyKey(): string {
+  return crypto.randomUUID()
+}
 
-  const data: unknown = await res.json().catch(() => null)
+interface ApiOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  body?: unknown
+  /** Paramètres d'URL (?page=2&search=riz) ; les valeurs undefined sont ignorées */
+  params?: Record<string, unknown>
+  idempotencyKey?: string
+}
 
-  if (!res.ok) {
-    // Format d'erreur du serveur : { error: { message, details } }
-    const error = (data as { error?: { message?: string; details?: unknown } } | null)?.error
-    throw new ApiError(res.status, error?.message ?? 'Erreur réseau', error?.details)
-  }
-
-  return data as T
+/** Appel JSON à l'API : renvoie les données, ou lève une ApiError au message prêt à afficher. */
+export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const res = await http.request<T>({
+    url: path,
+    method: options.method ?? 'GET',
+    data: options.body,
+    params: options.params,
+    headers: options.idempotencyKey ? { 'Idempotency-Key': options.idempotencyKey } : undefined,
+  })
+  return (res.status === 204 ? undefined : res.data) as T
 }
 
 export function getErrorMessage(error: unknown): string {

@@ -1,4 +1,5 @@
 import {
+  BankOutlined,
   DashboardOutlined,
   LogoutOutlined,
   SafetyOutlined,
@@ -10,8 +11,33 @@ import { App, Avatar, Button, Layout, Menu, Select, Typography } from 'antd'
 import type { MenuProps } from 'antd'
 import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useActiveShop } from '../hook/useActiveShop'
 import { useAuth } from '../hook/useAuth'
 import { getErrorMessage } from '../services/api'
+
+/** Boutique de travail (caisse, stock…) : choix mémorisé par entreprise. */
+function ShopSelector() {
+  const { shops, activeShop, setActiveShop, isLoading } = useActiveShop()
+
+  if (isLoading || !activeShop) return null
+  if (shops.length === 1) {
+    return (
+      <Typography.Text type="secondary" className="hidden items-center gap-1 sm:inline-flex">
+        <ShopOutlined /> {activeShop.name}
+      </Typography.Text>
+    )
+  }
+  return (
+    <Select
+      value={activeShop.id}
+      onChange={setActiveShop}
+      options={shops.map((shop) => ({ value: shop.id, label: shop.name }))}
+      suffixIcon={<ShopOutlined />}
+      className="hidden w-44 sm:block"
+      aria-label="Boutique active"
+    />
+  )
+}
 
 const { Header, Content } = Layout
 
@@ -73,7 +99,7 @@ export function AppLayout() {
               loading={switching}
               disabled={switching}
               options={companies.map((company) => ({ value: company.id, label: company.name }))}
-              suffixIcon={<ShopOutlined />}
+              suffixIcon={<BankOutlined />}
               className="hidden w-48 sm:block"
               aria-label="Entreprise active"
             />
@@ -82,6 +108,7 @@ export function AppLayout() {
               {activeCompany?.name}
             </Typography.Text>
           )}
+          <ShopSelector />
           <Avatar icon={<UserOutlined />} />
           <Typography.Text strong className="hidden sm:inline">
             {user?.name}

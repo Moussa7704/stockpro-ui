@@ -3,7 +3,7 @@ import { Alert, App, Button, Input, Typography } from 'antd'
 import type { OTPRef } from 'antd/es/input/OTP'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import type { OtpChallenge } from '../../context/AuthContext'
+import type { OtpChallenge } from '../../types/auth'
 import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
 

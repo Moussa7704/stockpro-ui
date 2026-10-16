@@ -1,13 +1,9 @@
 import { RouterProvider } from 'react-router-dom'
-import { AuthProvider } from './context/AuthProvider'
 import { router } from './routes/router'
 
+// La session (Redux) et le cache des données (TanStack Query) sont fournis dans main.tsx
 function App() {
-  return (
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App
