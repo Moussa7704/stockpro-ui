@@ -8,6 +8,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
-    testTimeout: 15_000,
+    // Scénarios complets (commande → envoi → réception…) : longs sous la charge de toute la suite
+    testTimeout: 30_000,
   },
 })

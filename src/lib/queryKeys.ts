@@ -75,4 +75,20 @@ export const queryKeys = {
     ticket: (id: string) => ['pos', 'ticket', id] as const,
     customers: (search: string) => ['pos', 'customers', search] as const,
   },
+  // Clients : un règlement change la fiche, le compte, le relevé et les impayés
+  customers: {
+    all: ['customers'] as const,
+    list: (query: object) => ['customers', 'list', query] as const,
+    detail: (id: string) => ['customers', 'detail', id] as const,
+    ledger: (id: string, query: object) => ['customers', 'ledger', id, query] as const,
+    statement: (id: string, from: string, to: string) => ['customers', 'statement', id, from, to] as const,
+    payments: (id: string, query: object) => ['customers', 'payments', id, query] as const,
+    debtors: (query: object) => ['customers', 'debtors', query] as const,
+  },
+  expenses: {
+    all: ['expenses'] as const,
+    list: (query: object) => ['expenses', 'list', query] as const,
+    categories: ['expenses', 'categories'] as const,
+    categoriesWithArchived: ['expenses', 'categories', 'with-archived'] as const,
+  },
 }

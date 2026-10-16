@@ -12,6 +12,10 @@ import { SelectCompanyPage } from '../features/auth/SelectCompanyPage'
 import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { MembersPage } from '../features/members/MembersPage'
+import { CustomerPage } from '../features/customers/CustomerPage'
+import { CustomersPage } from '../features/customers/CustomersPage'
+import { DebtorsPage } from '../features/customers/DebtorsPage'
+import { ExpensesPage } from '../features/expenses/ExpensesPage'
 import { PosPage } from '../features/pos/PosPage'
 import { SalesPage } from '../features/pos/SalesPage'
 import { InvoicesPage } from '../features/purchases/InvoicesPage'
@@ -96,6 +100,22 @@ export const routes: RouteObject[] = [
                   { path: '/pos', element: <PosPage /> },
                   { path: '/pos/sales', element: <SalesPage /> },
                 ],
+              },
+              // Clients et finances
+              {
+                element: <PermissionRoute permission="customers.manage" />,
+                children: [
+                  { path: '/customers', element: <CustomersPage /> },
+                  { path: '/customers/:id', element: <CustomerPage /> },
+                ],
+              },
+              {
+                element: <PermissionRoute permission="reports.view" />,
+                children: [{ path: '/debtors', element: <DebtorsPage /> }],
+              },
+              {
+                element: <PermissionRoute permission="expenses.manage" />,
+                children: [{ path: '/expenses', element: <ExpensesPage /> }],
               },
               // Achats : commandes, réceptions et retours avec purchases.manage
               {

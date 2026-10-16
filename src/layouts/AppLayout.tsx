@@ -7,12 +7,14 @@ import {
   ColumnWidthOutlined,
   CreditCardOutlined,
   DashboardOutlined,
+  DollarOutlined,
   DownOutlined,
   FileDoneOutlined,
   FileTextOutlined,
   FolderOutlined,
   HistoryOutlined,
   ShoppingCartOutlined,
+  SolutionOutlined,
   InboxOutlined,
   LogoutOutlined,
   RollbackOutlined,
@@ -22,6 +24,7 @@ import {
   ShopOutlined,
   SlidersOutlined,
   TeamOutlined,
+  WalletOutlined,
   TruckOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -79,6 +82,14 @@ const NAVIGATION: { group: string | null; links: NavLink[] }[] = [
     links: [
       { path: '/pos', label: 'Caisse', icon: <ShoppingCartOutlined />, permission: 'sales.create' },
       { path: '/pos/sales', label: 'Historique de caisse', icon: <CreditCardOutlined />, permission: 'sales.create' },
+    ],
+  },
+  {
+    group: 'Clients et finances',
+    links: [
+      { path: '/customers', label: 'Clients', icon: <SolutionOutlined />, permission: 'customers.manage' },
+      { path: '/debtors', label: 'Impayés', icon: <DollarOutlined />, permission: 'reports.view' },
+      { path: '/expenses', label: 'Dépenses', icon: <WalletOutlined />, permission: 'expenses.manage' },
     ],
   },
   {
