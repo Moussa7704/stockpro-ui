@@ -1,13 +1,17 @@
 import {
+  AppstoreOutlined,
   AuditOutlined,
   BankOutlined,
+  ColumnWidthOutlined,
   DashboardOutlined,
   DownOutlined,
+  FolderOutlined,
   LogoutOutlined,
   SafetyOutlined,
   SettingOutlined,
   ShopOutlined,
   TeamOutlined,
+  TruckOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { App, Avatar, Button, Dropdown, Layout, Menu, Select, Typography } from 'antd'
@@ -58,6 +62,15 @@ const NAVIGATION: { group: string | null; links: NavLink[] }[] = [
   {
     group: null,
     links: [{ path: '/', label: 'Tableau de bord', icon: <DashboardOutlined /> }],
+  },
+  {
+    group: 'Catalogue',
+    links: [
+      { path: '/products', label: 'Produits', icon: <AppstoreOutlined />, permission: 'products.view' },
+      { path: '/categories', label: 'Catégories', icon: <FolderOutlined />, permission: 'products.view' },
+      { path: '/units', label: 'Unités', icon: <ColumnWidthOutlined />, permission: 'products.view' },
+      { path: '/suppliers', label: 'Fournisseurs', icon: <TruckOutlined />, permission: 'products.view' },
+    ],
   },
   {
     group: 'Administration',
