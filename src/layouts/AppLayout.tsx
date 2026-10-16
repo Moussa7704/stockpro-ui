@@ -1,6 +1,7 @@
 import {
   AppstoreOutlined,
   AuditOutlined,
+  BarChartOutlined,
   BankOutlined,
   CarryOutOutlined,
   DatabaseOutlined,
@@ -75,7 +76,10 @@ interface NavLink {
 const NAVIGATION: { group: string | null; links: NavLink[] }[] = [
   {
     group: null,
-    links: [{ path: '/', label: 'Tableau de bord', icon: <DashboardOutlined /> }],
+    links: [
+      { path: '/', label: 'Tableau de bord', icon: <DashboardOutlined /> },
+      { path: '/reports', label: 'Rapports', icon: <BarChartOutlined />, permission: 'reports.view' },
+    ],
   },
   {
     group: 'Caisse',

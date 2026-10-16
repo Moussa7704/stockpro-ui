@@ -67,11 +67,21 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-/** Format d'erreur du serveur : { error: { message, details } } → ApiError lisible. */
-function toApiError(error: unknown): ApiError {
+/**
+ * Format d'erreur du serveur : { error: { message, details } } → ApiError lisible.
+ * Pour un téléchargement (responseType blob), le message JSON arrive dans un Blob : on le relit.
+ */
+async function toApiError(error: unknown): Promise<ApiError> {
   if (error instanceof ApiError) return error
   if (error instanceof AxiosError && error.response) {
-    const body = error.response.data as { error?: { message?: string; details?: unknown } } | null
+    let data: unknown = error.response.data
+    if (typeof Blob !== 'undefined' && data instanceof Blob) {
+      data = await data
+        .text()
+        .then((text) => JSON.parse(text) as unknown)
+        .catch(() => null)
+    }
+    const body = data as { error?: { message?: string; details?: unknown } } | null
     return new ApiError(error.response.status, body?.error?.message ?? 'Erreur inattendue du serveur', body?.error?.details)
   }
   return new ApiError(0, 'Impossible de joindre le serveur.')
@@ -92,7 +102,7 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
     }
     onSessionExpired?.()
   }
-  throw toApiError(error)
+  throw await toApiError(error)
 })
 
 /**
