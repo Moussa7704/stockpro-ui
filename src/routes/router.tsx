@@ -3,16 +3,18 @@ import { AccountPage } from '../features/account/AccountPage'
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
+import { SelectCompanyPage } from '../features/auth/SelectCompanyPage'
 import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
-import { UsersPage } from '../features/users/UsersPage'
+import { MembersPage } from '../features/members/MembersPage'
+import { RolesPage } from '../features/roles/RolesPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
-import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from './ProtectedRoute'
+import { CompanyRoute, PermissionRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
 
 export const router = createBrowserRouter([
   {
-    // Pas d'inscription publique : les comptes sont créés par un admin (page Utilisateurs)
+    // Pas d'inscription publique : le propriétaire invite son équipe (page Équipe)
     element: <PublicOnlyRoute />,
     children: [
       {
@@ -34,13 +36,27 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        element: <AppLayout />,
+        // Membre de plusieurs entreprises : choix de l'entreprise active
+        element: <AuthLayout />,
+        children: [{ path: '/select-company', element: <SelectCompanyPage /> }],
+      },
+      {
+        element: <CompanyRoute />,
         children: [
-          { path: '/', element: <DashboardPage /> },
-          { path: '/account', element: <AccountPage /> },
           {
-            element: <RoleRoute roles={['admin']} />,
-            children: [{ path: '/users', element: <UsersPage /> }],
+            element: <AppLayout />,
+            children: [
+              { path: '/', element: <DashboardPage /> },
+              { path: '/account', element: <AccountPage /> },
+              {
+                element: <PermissionRoute permission="users.manage" />,
+                children: [{ path: '/members', element: <MembersPage /> }],
+              },
+              {
+                element: <PermissionRoute permission="roles.manage" />,
+                children: [{ path: '/roles', element: <RolesPage /> }],
+              },
+            ],
           },
         ],
       },

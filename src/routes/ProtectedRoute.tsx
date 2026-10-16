@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { FullPageLoader } from '../components/FullPageLoader'
 import { useAuth } from '../hook/useAuth'
-import type { UserRole } from '../types/auth'
+import type { Permission } from '../types/access'
 
 /** Pages réservées aux utilisateurs connectés. */
 export function ProtectedRoute() {
@@ -17,13 +17,25 @@ export function ProtectedRoute() {
 }
 
 /**
- * Pages réservées à certains rôles (à placer sous ProtectedRoute).
- * Confort d'affichage uniquement : la vraie protection est côté API (requireRole).
+ * Pages qui travaillent dans une entreprise (à placer sous ProtectedRoute) :
+ * membre de plusieurs entreprises → il faut d'abord en choisir une.
  */
-export function RoleRoute({ roles }: { roles: UserRole[] }) {
-  const { user } = useAuth()
+export function CompanyRoute() {
+  const { activeCompany } = useAuth()
+  const location = useLocation()
 
-  if (!user || !roles.includes(user.role)) return <Navigate to="/" replace />
+  if (!activeCompany) return <Navigate to="/select-company" replace state={{ from: location.pathname }} />
+  return <Outlet />
+}
+
+/**
+ * Pages réservées à une permission (à placer sous CompanyRoute).
+ * Confort d'affichage uniquement : la vraie protection est côté API (requirePermission).
+ */
+export function PermissionRoute({ permission }: { permission: Permission }) {
+  const { can } = useAuth()
+
+  if (!can(permission)) return <Navigate to="/" replace />
   return <Outlet />
 }
 
