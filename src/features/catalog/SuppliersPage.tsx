@@ -156,7 +156,7 @@ export function SuppliersPage() {
   ]
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Typography.Title level={2} className="mb-0">
           Fournisseurs
