@@ -126,7 +126,7 @@ export function UnitsPage() {
   ]
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Typography.Title level={2} className="mb-0">
           Unités
