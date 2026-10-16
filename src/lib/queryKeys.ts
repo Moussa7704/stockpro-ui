@@ -85,6 +85,11 @@ export const queryKeys = {
     payments: (id: string, query: object) => ['customers', 'payments', id, query] as const,
     debtors: (query: object) => ['customers', 'debtors', query] as const,
   },
+  reports: {
+    all: ['reports'] as const,
+    dashboard: (shopId?: string) => ['reports', 'dashboard', shopId ?? 'all'] as const,
+    report: (name: string, params: object) => ['reports', name, params] as const,
+  },
   expenses: {
     all: ['expenses'] as const,
     list: (query: object) => ['expenses', 'list', query] as const,

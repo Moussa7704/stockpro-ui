@@ -22,6 +22,7 @@ import { InvoicesPage } from '../features/purchases/InvoicesPage'
 import { OrdersPage } from '../features/purchases/OrdersPage'
 import { ReceiptsPage } from '../features/purchases/ReceiptsPage'
 import { ReturnsPage } from '../features/purchases/ReturnsPage'
+import { ReportsPage } from '../features/reports/ReportsPage'
 import { RolesPage } from '../features/roles/RolesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { AdjustmentsPage } from '../features/stock/AdjustmentsPage'
@@ -111,7 +112,10 @@ export const routes: RouteObject[] = [
               },
               {
                 element: <PermissionRoute permission="reports.view" />,
-                children: [{ path: '/debtors', element: <DebtorsPage /> }],
+                children: [
+                  { path: '/debtors', element: <DebtorsPage /> },
+                  { path: '/reports', element: <ReportsPage /> },
+                ],
               },
               {
                 element: <PermissionRoute permission="expenses.manage" />,
