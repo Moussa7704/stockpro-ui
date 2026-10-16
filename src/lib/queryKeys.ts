@@ -64,4 +64,15 @@ export const queryKeys = {
     invoice: (id: string) => ['purchases', 'invoice', id] as const,
     balances: ['purchases', 'balances'] as const,
   },
+  // Caisse : une vente change le stock et la session (invalider aussi stock.all)
+  pos: {
+    all: ['pos'] as const,
+    currentSession: (shopId: string) => ['pos', 'current-session', shopId] as const,
+    session: (id: string) => ['pos', 'session', id] as const,
+    sessions: (query: object) => ['pos', 'sessions', query] as const,
+    sales: (query: object) => ['pos', 'sales', query] as const,
+    sale: (id: string) => ['pos', 'sale', id] as const,
+    ticket: (id: string) => ['pos', 'ticket', id] as const,
+    customers: (search: string) => ['pos', 'customers', search] as const,
+  },
 }

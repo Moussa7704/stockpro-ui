@@ -12,6 +12,8 @@ import { SelectCompanyPage } from '../features/auth/SelectCompanyPage'
 import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { MembersPage } from '../features/members/MembersPage'
+import { PosPage } from '../features/pos/PosPage'
+import { SalesPage } from '../features/pos/SalesPage'
 import { InvoicesPage } from '../features/purchases/InvoicesPage'
 import { OrdersPage } from '../features/purchases/OrdersPage'
 import { ReceiptsPage } from '../features/purchases/ReceiptsPage'
@@ -85,6 +87,14 @@ export const routes: RouteObject[] = [
                   { path: '/stock/transfers', element: <TransfersPage /> },
                   { path: '/stock/inventories', element: <InventoriesPage /> },
                   { path: '/stock/inventories/:id', element: <InventoryPage /> },
+                ],
+              },
+              // Caisse : vendre (sales.create) dans une session ouverte (cash_sessions.manage)
+              {
+                element: <PermissionRoute permission="sales.create" />,
+                children: [
+                  { path: '/pos', element: <PosPage /> },
+                  { path: '/pos/sales', element: <SalesPage /> },
                 ],
               },
               // Achats : commandes, réceptions et retours avec purchases.manage

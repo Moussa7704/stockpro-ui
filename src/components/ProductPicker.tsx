@@ -1,7 +1,7 @@
 import { BarcodeOutlined } from '@ant-design/icons'
 import { useQuery } from '@tanstack/react-query'
-import { App, Select } from 'antd'
-import { useState } from 'react'
+import { App, Select, type RefSelectProps } from 'antd'
+import { useState, type Ref } from 'react'
 import { useDebouncedValue } from '../hook/useDebouncedValue'
 import { queryKeys } from '../lib/queryKeys'
 import { ApiError, getErrorMessage } from '../services/api'
@@ -15,6 +15,9 @@ interface ProductPickerProps {
   excludeIds?: string[]
   placeholder?: string
   autoFocus?: boolean
+  /** Pour redonner le focus au champ (caisse : après chaque action, raccourci F2) */
+  selectRef?: Ref<RefSelectProps>
+  size?: 'small' | 'middle' | 'large'
 }
 
 // Un code scanné ou saisi : sans espace, au moins 4 caractères
@@ -25,7 +28,7 @@ const CODE_PATTERN = /^[0-9A-Za-z._-]{4,64}$/
  * - recherche par nom, référence ou code-barres dans la liste ;
  * - douchette : le code suivi d'« Entrée » ajoute directement le produit (code-barres, puis SKU).
  */
-export function ProductPicker({ onPick, excludeIds = [], placeholder, autoFocus }: ProductPickerProps) {
+export function ProductPicker({ onPick, excludeIds = [], placeholder, autoFocus, selectRef, size }: ProductPickerProps) {
   const { message } = App.useApp()
   const [term, setTerm] = useState('')
   const [looking, setLooking] = useState(false)
@@ -76,6 +79,8 @@ export function ProductPicker({ onPick, excludeIds = [], placeholder, autoFocus 
 
   return (
     <Select<string>
+      ref={selectRef}
+      size={size}
       showSearch={{ filterOption: false, onSearch: setTerm, searchValue: term }}
       value={null}
       autoFocus={autoFocus}
