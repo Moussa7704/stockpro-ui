@@ -31,7 +31,7 @@ import {
 } from '@ant-design/icons'
 import { App, Avatar, Button, Dropdown, Layout, Menu, Select, Typography } from 'antd'
 import type { MenuProps } from 'antd'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useActiveShop } from '../hook/useActiveShop'
 import { useAuth } from '../hook/useAuth'
@@ -150,6 +150,11 @@ export function AppLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
+  // Seul le contenu défile : on le remet en haut à chaque changement d'écran
+  const contentRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0
+  }, [pathname])
 
   async function handleSwitch(companyId: string) {
     setSwitching(true)
@@ -186,15 +191,20 @@ export function AppLayout() {
   ]
 
   return (
-    <Layout className="min-h-full">
+    // Hauteur de la fenêtre : en-tête et menu fixes, le menu et le contenu défilent chacun de leur côté
+    <Layout className="h-dvh overflow-hidden">
       <Sider theme="light" width={232} breakpoint="lg" collapsedWidth={0} className="border-r border-slate-200">
-        <Link to="/" className="flex h-16 items-center px-6 text-lg font-bold text-brand">
-          StockPro
-        </Link>
-        <Menu mode="inline" selectedKeys={[selectedKey(pathname, allPaths)]} items={menuItems} className="border-e-0" />
+        <div className="flex h-full flex-col">
+          <Link to="/" className="flex h-16 shrink-0 items-center px-6 text-lg font-bold text-brand">
+            StockPro
+          </Link>
+          <nav aria-label="Menu principal" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <Menu mode="inline" selectedKeys={[selectedKey(pathname, allPaths)]} items={menuItems} className="border-e-0" />
+          </nav>
+        </div>
       </Sider>
-      <Layout>
-        <Header className="flex items-center justify-end gap-3 bg-white px-6 shadow-sm">
+      <Layout className="min-w-0">
+        <Header className="z-10 flex shrink-0 items-center justify-end gap-3 bg-white px-6 shadow-sm">
           {companies.length > 1 ? (
             <Select
               value={activeCompany?.id}
@@ -220,7 +230,7 @@ export function AppLayout() {
             </Button>
           </Dropdown>
         </Header>
-        <Content className="p-6">
+        <Content ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-6">
           <Outlet />
         </Content>
       </Layout>
