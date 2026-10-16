@@ -95,7 +95,15 @@ export function mockStockApi(options: { withCosts?: boolean } = {}) {
     }),
     mock.get('/api/stock/alerts', () =>
       HttpResponse.json({
-        alerts: db.levels.filter((level) => level.lowStock).map((level) => ({ shop: { id: level.shop.id, code: level.shop.code }, product: ref(stockProducts.rice), quantity: level.quantity, alertThreshold: level.alertThreshold })),
+        alerts: db.levels
+          .filter((level) => level.lowStock)
+          .map((level) => ({
+            shop: level.shop,
+            product: { ...ref(stockProducts.rice), unit: level.product.unit },
+            quantity: level.quantity,
+            alertThreshold: level.alertThreshold,
+            status: Number(level.quantity) <= 0 ? 'out_of_stock' : 'low_stock',
+          })),
       }),
     ),
     mock.get('/api/stock/movements', async ({ request }) => {

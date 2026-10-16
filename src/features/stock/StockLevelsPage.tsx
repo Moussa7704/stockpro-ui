@@ -2,7 +2,7 @@ import { HistoryOutlined, SearchOutlined, WarningOutlined } from '@ant-design/ic
 import { Alert, Badge, Button, Card, Input, Segmented, Table, Tag, Tooltip, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Money } from '../../components/Money'
 import { useDebouncedValue } from '../../hook/useDebouncedValue'
 import { getErrorMessage } from '../../services/api'
@@ -10,13 +10,17 @@ import type { StockAlert, StockLevel } from '../../types/stock'
 import { formatQuantity } from '../../utils/format'
 import { useStockAlerts, useStockLevels } from './queries'
 import { ShopFilter } from './ShopFilter'
+import { StockAlertStatusTag } from './StockAlertStatusTag'
 
 const PAGE_SIZE = 20
 
 const movementsLink = (productId: string, productName: string) =>
   `/stock/movements?${new URLSearchParams({ productId, produit: productName }).toString()}`
 
-/** Alertes : produits sous leur seuil, y compris ceux jamais reçus dans une boutique (stock 0). */
+/**
+ * Alertes : ruptures en tête (y compris un produit sans seuil déjà stocké), puis les produits au
+ * niveau ou sous leur seuil, même jamais reçus dans une boutique.
+ */
 function AlertsTable({ shopId }: { shopId?: string }) {
   const { data: alerts = [], isPending, error } = useStockAlerts(shopId)
   const columns: TableColumnsType<StockAlert> = [
@@ -32,15 +36,32 @@ function AlertsTable({ shopId }: { shopId?: string }) {
         </div>
       ),
     },
-    { title: 'Boutique', key: 'shop', width: 110, render: (_, alert) => <Tag>{alert.shop.code}</Tag> },
+    { title: 'Boutique', key: 'shop', width: 110, render: (_, alert) => <Tooltip title={alert.shop.name}><Tag>{alert.shop.code}</Tag></Tooltip> },
     {
       title: 'En stock',
-      dataIndex: 'quantity',
-      width: 120,
+      key: 'quantity',
+      width: 130,
       align: 'right',
-      render: (quantity: string) => <span className="font-semibold text-red-600 tabular-nums">{formatQuantity(quantity)}</span>,
+      render: (_, alert) => (
+        <span className="font-semibold text-red-600 tabular-nums">
+          {formatQuantity(alert.quantity)} {alert.product.unit}
+        </span>
+      ),
     },
-    { title: 'Seuil', dataIndex: 'alertThreshold', width: 100, align: 'right', render: (value: string) => formatQuantity(value) },
+    { title: 'Seuil', dataIndex: 'alertThreshold', width: 100, align: 'right', render: (value: string) => (Number(value) > 0 ? formatQuantity(value) : '—') },
+    { title: 'État', key: 'status', width: 120, render: (_, alert) => <StockAlertStatusTag status={alert.status} /> },
+    {
+      title: '',
+      key: 'actions',
+      width: 60,
+      render: (_, alert) => (
+        <Tooltip title="Mouvements de ce produit">
+          <Link to={movementsLink(alert.product.id, alert.product.name)} aria-label={`Mouvements de ${alert.product.name}`}>
+            <Button icon={<HistoryOutlined />} size="small" />
+          </Link>
+        </Tooltip>
+      ),
+    },
   ]
   return (
     <>
@@ -52,7 +73,7 @@ function AlertsTable({ shopId }: { shopId?: string }) {
           dataSource={alerts}
           loading={isPending}
           pagination={{ pageSize: 50, hideOnSinglePage: true }}
-          locale={{ emptyText: 'Aucun produit sous son seuil d’alerte' }}
+          locale={{ emptyText: 'Aucun produit à réapprovisionner' }}
         />
       </Card>
     </>
@@ -61,7 +82,9 @@ function AlertsTable({ shopId }: { shopId?: string }) {
 
 /** Niveaux de stock par produit et par boutique (stock.view) ; valeur au coût moyen si autorisé. */
 export function StockLevelsPage() {
-  const [view, setView] = useState<'levels' | 'alerts'>('levels')
+  // /stock?vue=alertes ouvre directement les alertes (liens du tableau de bord)
+  const [searchParams] = useSearchParams()
+  const [view, setView] = useState<'levels' | 'alerts'>(searchParams.get('vue') === 'alertes' ? 'alerts' : 'levels')
   const [shopId, setShopId] = useState<string | undefined>()
   const [search, setSearch] = useState('')
   const [lowStock, setLowStock] = useState(false)

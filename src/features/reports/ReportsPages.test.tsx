@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { meResponse, shopsFixture } from '../../test/fixtures'
 import { renderApp } from '../../test/render'
-import { mockReportsApi } from '../../test/reportsApi'
+import { mockReportsApi, stockAlert } from '../../test/reportsApi'
 import { server } from '../../test/server'
 import { http as mock, HttpResponse } from 'msw'
 
@@ -26,9 +26,10 @@ describe('Tableau de bord', () => {
     // Résultat négatif : en rouge ET signalé par un mot
     expect(screen.getByText('-50 000 FCFA')).toHaveClass('text-red-600')
     expect(screen.getByText(/déficitaire/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /3 en stock bas · 1 en rupture/ })).toHaveAttribute('href', '/stock')
+    expect(screen.getByRole('link', { name: /3 en stock bas · 1 en rupture/ })).toHaveAttribute('href', '/stock?vue=alertes')
     expect(screen.getByRole('link', { name: /2 client\(s\) débiteur\(s\)/ })).toHaveAttribute('href', '/debtors')
-    expect(screen.getByText('Riz parfumé 25 kg')).toBeInTheDocument()
+    const topProducts = screen.getByText('Meilleurs produits du mois').closest('.ant-card') as HTMLElement
+    expect(within(topProducts).getByText('Riz parfumé 25 kg')).toBeInTheDocument()
   })
 
   it('le graphique des 7 jours a sa vue tableau (lecture sans couleurs)', async () => {
@@ -52,6 +53,8 @@ describe('Tableau de bord', () => {
     await user.click(screen.getByLabelText('Filtrer par boutique'))
     await user.click(await screen.findByTitle('Boutique Marché'))
     await waitFor(() => expect(last('/api/reports/dashboard')?.search.get('shopId')).toBe('shop-2'))
+    // La carte « À réapprovisionner » suit la même boutique
+    await waitFor(() => expect(last('/api/stock/alerts')?.search.get('shopId')).toBe('shop-2'))
   })
 
   it('sans accès aux rapports : accueil avec raccourcis, aucune donnée financière demandée', async () => {
@@ -61,6 +64,70 @@ describe('Tableau de bord', () => {
     expect(await screen.findByRole('button', { name: /Ouvrir la caisse/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Clients/ })).toBeInTheDocument()
     expect(requests.some((request) => request.path === '/api/reports/dashboard')).toBe(false)
+    // Pas de stock.view : pas de carte « À réapprovisionner »
+    expect(screen.queryByText('À réapprovisionner')).not.toBeInTheDocument()
+    expect(requests.some((request) => request.path === '/api/stock/alerts')).toBe(false)
+  })
+})
+
+describe('Tableau de bord — À réapprovisionner', () => {
+  const restockCard = async () => (await screen.findByText('À réapprovisionner')).closest('.ant-card') as HTMLElement
+
+  it('ruptures en tête, état en toutes lettres, unité, seuil absent signalé par un tiret', async () => {
+    setup()
+    renderApp('/', { session: manager })
+
+    const card = await restockCard()
+    await within(card).findByText('Sucre en poudre')
+    const rows = within(card).getAllByRole('row').slice(1)
+    expect(within(rows[0]!).getByText('Sucre en poudre')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('Rupture')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText(/0\s*kg/)).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('—')).toBeInTheDocument()
+    expect(within(rows[1]!).getByText('Riz parfumé 25 kg')).toBeInTheDocument()
+    expect(within(rows[1]!).getByText('Stock bas')).toBeInTheDocument()
+    expect(within(rows[1]!).getByText(/3\s*pce/)).toBeInTheDocument()
+    expect(within(card).getByText('1 en rupture · 1 en stock bas')).toBeInTheDocument()
+    expect(within(card).getByRole('link', { name: 'Voir toutes les alertes' })).toHaveAttribute('href', '/stock?vue=alertes')
+  })
+
+  it('affiche les 10 plus urgents et renvoie vers la liste complète', async () => {
+    setup({ alerts: Array.from({ length: 12 }, (_, index) => stockAlert(index + 1, index < 2 ? 'out_of_stock' : 'low_stock')) })
+    renderApp('/', { session: manager })
+
+    const card = await restockCard()
+    await within(card).findByText('Produit 1')
+    expect(within(card).getAllByRole('row')).toHaveLength(11) // en-tête + 10 lignes
+    expect(within(card).queryByText('Produit 11')).not.toBeInTheDocument()
+    expect(within(card).getByText(/Et 2 autre\(s\) produit\(s\)/)).toBeInTheDocument()
+    expect(within(card).getByText('2 en rupture · 10 en stock bas')).toBeInTheDocument()
+  })
+
+  it('rien à réapprovisionner : message clair, pas de lien', async () => {
+    setup({ alerts: [] })
+    renderApp('/', { session: manager })
+
+    const card = await restockCard()
+    expect(await within(card).findByText(/Rien à réapprovisionner/)).toBeInTheDocument()
+    expect(within(card).queryByRole('link', { name: 'Voir toutes les alertes' })).not.toBeInTheDocument()
+  })
+
+  it('sans accès aux rapports mais avec stock.view : la carte reste sur l’accueil', async () => {
+    const { requests } = setup()
+    renderApp('/', { session: meResponse({ permissions: ['stock.view', 'products.view'], roleCode: 'stock_keeper' }) })
+
+    const card = await restockCard()
+    expect(await within(card).findByText('Sucre en poudre')).toBeInTheDocument()
+    expect(requests.some((request) => request.path === '/api/reports/dashboard')).toBe(false)
+  })
+
+  it('avec les rapports mais sans stock.view : pas de carte', async () => {
+    const { requests } = setup()
+    renderApp('/', { session: meResponse({ permissions: ['reports.view'] }) })
+
+    await screen.findByText('150 000 FCFA')
+    expect(screen.queryByText('À réapprovisionner')).not.toBeInTheDocument()
+    expect(requests.some((request) => request.path === '/api/stock/alerts')).toBe(false)
   })
 })
 

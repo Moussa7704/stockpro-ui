@@ -38,6 +38,19 @@ describe('Niveaux de stock', () => {
     await user.click(screen.getByText('Alertes'))
     const table = await screen.findByRole('table')
     expect(within(table).getByText('Riz parfumé 25 kg')).toBeInTheDocument()
+    expect(within(table).getByText('Stock bas')).toBeInTheDocument()
+  })
+
+  it('/stock?vue=alertes ouvre directement les alertes (lien du tableau de bord)', async () => {
+    mockStockApi()
+    renderApp('/stock?vue=alertes', { session: keeper })
+
+    const table = await screen.findByRole('table')
+    expect(await within(table).findByText('Riz parfumé 25 kg')).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: 'État' })).toBeInTheDocument()
+    expect(within(table).getByText(/3\s*pce/)).toBeInTheDocument()
+    // Vue des alertes : pas de recherche ni de filtre « stock bas »
+    expect(screen.queryByLabelText('Rechercher un produit')).not.toBeInTheDocument()
   })
 
   it('ouvre les mouvements d’un produit : filtre transmis, quantités signées', async () => {

@@ -1,5 +1,6 @@
 import { http as mock, HttpResponse } from 'msw'
 import type { Dashboard, SalesFigures } from '../types/reports'
+import type { StockAlert } from '../types/stock'
 import { server } from './server'
 
 const figures = (netRevenue: string, overrides: Partial<SalesFigures> = {}): SalesFigures => ({
@@ -30,8 +31,25 @@ export const dashboardFixture: Dashboard = {
   openCashSessions: 1,
 }
 
-/** Fausse API des rapports ; journalise les paramètres, et peut refuser un export. */
-export function mockReportsApi(options: { failExport?: boolean } = {}) {
+/** Alerte de stock pour la carte « À réapprovisionner » (ordre du serveur : ruptures d'abord). */
+export function stockAlert(index: number, status: StockAlert['status'], overrides: Partial<StockAlert> = {}): StockAlert {
+  return {
+    shop: { id: 'shop-1', code: 'BTQ1', name: 'Boutique Centre' },
+    product: { id: `p-${index}`, sku: `REF-${index}`, name: `Produit ${index}`, unit: 'pce' },
+    quantity: status === 'out_of_stock' ? '0.000' : '2.000',
+    alertThreshold: '5.000',
+    status,
+    ...overrides,
+  }
+}
+
+export const alertsFixture: StockAlert[] = [
+  stockAlert(1, 'out_of_stock', { product: { id: 'p-sugar', sku: 'SUCRE', name: 'Sucre en poudre', unit: 'kg' }, alertThreshold: '0.000' }),
+  stockAlert(2, 'low_stock', { product: { id: 'p-rice', sku: 'RIZ-25', name: 'Riz parfumé 25 kg', unit: 'pce' }, quantity: '3.000' }),
+]
+
+/** Fausse API des rapports (et des alertes de stock du tableau de bord) ; journalise les paramètres, et peut refuser un export. */
+export function mockReportsApi(options: { failExport?: boolean; alerts?: StockAlert[] } = {}) {
   const requests: { path: string; search: URLSearchParams }[] = []
   const record = (request: Request) => {
     const url = new URL(request.url)
@@ -48,6 +66,10 @@ export function mockReportsApi(options: { failExport?: boolean } = {}) {
   }
 
   server.use(
+    mock.get('/api/stock/alerts', ({ request }) => {
+      record(request)
+      return HttpResponse.json({ alerts: options.alerts ?? alertsFixture })
+    }),
     mock.get('/api/reports/dashboard', ({ request }) => {
       record(request)
       return HttpResponse.json({ dashboard: dashboardFixture })

@@ -18,12 +18,15 @@ export interface StockLevel {
   stockValue?: string
 }
 
-// GET /api/stock/alerts
+// GET /api/stock/alerts : ruptures en tête, puis stock au niveau ou sous le seuil
+export type StockAlertStatus = 'out_of_stock' | 'low_stock'
+
 export interface StockAlert {
-  shop: { id: string; code: string }
-  product: ProductRef
+  shop: { id: string; code: string; name: string }
+  product: ProductRef & { unit: string }
   quantity: string
-  alertThreshold: string
+  alertThreshold: string // 0 : produit sans seuil, signalé seulement en rupture
+  status: StockAlertStatus
 }
 
 export const MOVEMENT_TYPES = [
