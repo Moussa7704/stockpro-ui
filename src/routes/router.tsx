@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
 import { AccountPage } from '../features/account/AccountPage'
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
 import { LoginPage } from '../features/auth/LoginPage'
@@ -12,7 +12,8 @@ import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { CompanyRoute, PermissionRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
 
-export const router = createBrowserRouter([
+// Exportées seules : les tests les montent dans un routeur en mémoire (createMemoryRouter)
+export const routes: RouteObject[] = [
   {
     // Pas d'inscription publique : le propriétaire invite son équipe (page Équipe)
     element: <PublicOnlyRoute />,
@@ -63,4 +64,6 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
-])
+]
+
+export const router = createBrowserRouter(routes)

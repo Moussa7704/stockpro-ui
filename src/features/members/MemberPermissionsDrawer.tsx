@@ -1,9 +1,12 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Drawer, Skeleton, Tag, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { PermissionChecklist } from '../../components/PermissionChecklist'
+import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage } from '../../services/api'
 import * as membersService from '../../services/members.service'
-import type { Member, MemberPermissions, Permission, PermissionGroup } from '../../types/access'
+import type { Member, Permission, PermissionGroup } from '../../types/access'
+import { useMemberPermissions } from './queries'
 
 interface MemberPermissionsDrawerProps {
   /** Le parent monte le tiroir avec key={member.id} : l'état repart de zéro pour chaque membre. */
@@ -19,51 +22,34 @@ interface MemberPermissionsDrawerProps {
  */
 export function MemberPermissionsDrawer({ member, groups, onClose, onSaved }: MemberPermissionsDrawerProps) {
   const { message } = App.useApp()
-  const [details, setDetails] = useState<MemberPermissions | null>(null)
-  const [checked, setChecked] = useState<Permission[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-
+  const queryClient = useQueryClient()
   const memberId = member.id
-
-  useEffect(() => {
-    let cancelled = false
-    membersService
-      .getMemberPermissions(memberId)
-      .then(({ permissions }) => {
-        if (cancelled) return
-        setDetails(permissions)
-        setChecked(permissions.permissions)
-      })
-      .catch((err: unknown) => !cancelled && setError(getErrorMessage(err)))
-    return () => {
-      cancelled = true
-    }
-  }, [memberId])
+  const { data: details, error: loadError } = useMemberPermissions(memberId)
+  // null : rien de modifié, on affiche les droits enregistrés
+  const [edited, setEdited] = useState<Permission[] | null>(null)
+  const checked = edited ?? details?.permissions ?? []
 
   const rolePermissions = new Set(details?.role.permissions ?? [])
   const grantable = new Set(details?.grantable ?? [])
   const editable = details?.editable ?? false
 
-  async function handleSave() {
-    const isChecked = new Set(checked)
-    // Écart avec le rôle : ce qui est coché en plus (ajouts) ou décoché (retraits)
-    const grants = checked.filter((permission) => !rolePermissions.has(permission))
-    const revokes = [...rolePermissions].filter((permission) => !isChecked.has(permission))
-    setSaving(true)
-    setError(null)
-    try {
-      const { permissions } = await membersService.setMemberPermissions(memberId, { grants, revokes })
-      setDetails(permissions)
-      setChecked(permissions.permissions)
+  const save = useMutation({
+    mutationFn: () => {
+      const isChecked = new Set(checked)
+      // Écart avec le rôle : ce qui est coché en plus (ajouts) ou décoché (retraits)
+      const grants = checked.filter((permission) => !rolePermissions.has(permission))
+      const revokes = [...rolePermissions].filter((permission) => !isChecked.has(permission))
+      return membersService.setMemberPermissions(memberId, { grants, revokes })
+    },
+    onSuccess: ({ permissions }) => {
+      queryClient.setQueryData(queryKeys.members.permissions(memberId), permissions)
+      setEdited(null)
       message.success('Droits mis à jour')
       onSaved()
-    } catch (err) {
-      setError(getErrorMessage(err))
-    } finally {
-      setSaving(false)
-    }
-  }
+    },
+  })
+
+  const error = save.error ?? loadError
 
   function renderExtra(permission: Permission) {
     const inRole = rolePermissions.has(permission)
@@ -83,20 +69,20 @@ export function MemberPermissionsDrawer({ member, groups, onClose, onSaved }: Me
       footer={
         editable && (
           <div className="flex justify-between gap-2">
-            <Button onClick={() => setChecked(details?.role.permissions ?? [])} disabled={saving}>
+            <Button onClick={() => setEdited(details?.role.permissions ?? [])} disabled={save.isPending}>
               Revenir au rôle
             </Button>
-            <Button type="primary" onClick={handleSave} loading={saving}>
+            <Button type="primary" onClick={() => save.mutate()} loading={save.isPending}>
               Enregistrer
             </Button>
           </div>
         )
       }
     >
-      {error && <Alert type="error" title={error} showIcon className="mb-4" />}
+      {error && <Alert type="error" title={getErrorMessage(error)} showIcon className="mb-4" />}
 
       {!details ? (
-        !error && <Skeleton active />
+        !loadError && <Skeleton active />
       ) : (
         <div className="flex flex-col gap-4">
           <Typography.Paragraph type="secondary" className="mb-0">
@@ -117,7 +103,7 @@ export function MemberPermissionsDrawer({ member, groups, onClose, onSaved }: Me
           <PermissionChecklist
             groups={groups}
             value={checked}
-            onChange={setChecked}
+            onChange={setEdited}
             // On n'accorde ou ne retire que des permissions qu'on possède soi-même
             isDisabled={(permission) => !editable || !grantable.has(permission)}
             renderExtra={renderExtra}

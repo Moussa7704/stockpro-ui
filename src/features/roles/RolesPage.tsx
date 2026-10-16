@@ -1,10 +1,13 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Card, Popconfirm, Space, Table, Tag, Tooltip, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage } from '../../services/api'
 import * as rolesService from '../../services/roles.service'
-import type { PermissionGroup, Role } from '../../types/access'
+import type { Role } from '../../types/access'
+import { usePermissionCatalog, useRoles } from './queries'
 import { RoleFormModal } from './RoleFormModal'
 
 /**
@@ -14,59 +17,46 @@ import { RoleFormModal } from './RoleFormModal'
 export function RolesPage() {
   const { message } = App.useApp()
 
-  const [roles, setRoles] = useState<Role[]>([])
-  const [groups, setGroups] = useState<PermissionGroup[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const rolesQuery = useRoles()
+  const catalog = usePermissionCatalog()
+  const roles = rolesQuery.data ?? []
+  const groups = catalog.data ?? []
+  const loadError = rolesQuery.error ?? catalog.error
+  const error = loadError ? getErrorMessage(loadError) : null
+
   // undefined : modal fermée ; null : création ; Role : modification
   const [formRole, setFormRole] = useState<Role | null | undefined>(undefined)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  const load = useCallback((isCancelled: () => boolean = () => false) => {
-    return Promise.all([rolesService.listRoles(), rolesService.getPermissionCatalog()])
-      .then(([{ roles: list }, { groups: catalog }]) => {
-        if (!isCancelled()) {
-          setRoles(list)
-          setGroups(catalog)
-          setError(null)
-        }
-      })
-      .catch((err: unknown) => !isCancelled() && setError(getErrorMessage(err)))
-      .finally(() => !isCancelled() && setLoading(false))
-  }, [])
-
-  // Premier chargement (loading vaut déjà true au départ)
-  useEffect(() => {
-    let cancelled = false
-    void load(() => cancelled)
-    return () => {
-      cancelled = true
-    }
-  }, [load])
 
   function reload() {
-    setLoading(true)
-    void load()
+    void rolesQuery.refetch()
+    void catalog.refetch()
+  }
+
+  /** Les droits effectifs des membres changent avec leur rôle : on relit aussi l'équipe. */
+  function refreshAccess() {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.roles.all })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.members.all })
   }
 
   function handleSaved(saved: Role, created: boolean) {
-    setRoles((list) => (created ? [...list, saved] : list.map((item) => (item.id === saved.id ? saved : item))))
+    queryClient.setQueryData<Role[]>(queryKeys.roles.all, (list = []) =>
+      created ? [...list, saved] : list.map((item) => (item.id === saved.id ? saved : item)),
+    )
+    refreshAccess()
     setFormRole(undefined)
     message.success(created ? `Rôle « ${saved.name} » créé` : `Rôle « ${saved.name} » mis à jour`)
   }
 
-  async function handleDelete(target: Role) {
-    setDeletingId(target.id)
-    try {
-      await rolesService.deleteRole(target.id)
-      setRoles((list) => list.filter((item) => item.id !== target.id))
+  const remove = useMutation({
+    mutationFn: (target: Role) => rolesService.deleteRole(target.id),
+    onSuccess: (_result, target) => {
+      queryClient.setQueryData<Role[]>(queryKeys.roles.all, (list = []) => list.filter((item) => item.id !== target.id))
+      refreshAccess()
       message.success(`Rôle « ${target.name} » supprimé`)
-    } catch (err) {
-      message.error(getErrorMessage(err))
-    } finally {
-      setDeletingId(null)
-    }
-  }
+    },
+    onError: (err) => message.error(getErrorMessage(err)),
+  })
 
   // Libellés lisibles des permissions (catalogue du serveur)
   const labels = new Map(groups.flatMap((group) => group.permissions.map((p) => [p.code, p.label] as const)))
@@ -139,7 +129,7 @@ export function RolesPage() {
               okButtonProps={{ danger: true }}
               cancelText="Annuler"
               disabled={!record.editable || record.memberCount > 0}
-              onConfirm={() => handleDelete(record)}
+              onConfirm={() => remove.mutate(record)}
             >
               <Tooltip title={record.memberCount > 0 ? 'Rôle attribué à des membres' : 'Supprimer'}>
                 <Button
@@ -147,7 +137,7 @@ export function RolesPage() {
                   size="small"
                   danger
                   disabled={!record.editable || record.memberCount > 0}
-                  loading={deletingId === record.id}
+                  loading={remove.isPending && remove.variables?.id === record.id}
                   aria-label={`Supprimer ${record.name}`}
                 />
               </Tooltip>
@@ -165,7 +155,7 @@ export function RolesPage() {
           Rôles
         </Typography.Title>
         <div className="flex gap-2">
-          <Button icon={<ReloadOutlined />} onClick={reload} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={reload} loading={rolesQuery.isFetching}>
             Actualiser
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormRole(null)}>
@@ -181,7 +171,7 @@ export function RolesPage() {
           rowKey="id"
           columns={columns}
           dataSource={roles}
-          loading={loading}
+          loading={rolesQuery.isPending}
           pagination={false}
           scroll={{ x: 600 }}
         />

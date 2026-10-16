@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build:
-    name: Lint & Build
+    name: Lint, Tests & Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,5 +27,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm lint
+
+      # Tests des écrans (jsdom + API simulée par MSW : aucun serveur nécessaire)
+      - run: pnpm test
 
       - run: pnpm build
