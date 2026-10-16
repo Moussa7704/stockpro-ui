@@ -51,4 +51,17 @@ export const queryKeys = {
     inventories: (query: object) => ['stock', 'inventories', query] as const,
     inventory: (id: string) => ['stock', 'inventory', id] as const,
   },
+  // Achats : une réception ou un retour validé change aussi le stock (invalider stock.all en plus)
+  purchases: {
+    all: ['purchases'] as const,
+    orders: (query: object) => ['purchases', 'orders', query] as const,
+    order: (id: string) => ['purchases', 'order', id] as const,
+    receipts: (query: object) => ['purchases', 'receipts', query] as const,
+    receipt: (id: string) => ['purchases', 'receipt', id] as const,
+    returns: (query: object) => ['purchases', 'returns', query] as const,
+    return: (id: string) => ['purchases', 'return', id] as const,
+    invoices: (query: object) => ['purchases', 'invoices', query] as const,
+    invoice: (id: string) => ['purchases', 'invoice', id] as const,
+    balances: ['purchases', 'balances'] as const,
+  },
 }

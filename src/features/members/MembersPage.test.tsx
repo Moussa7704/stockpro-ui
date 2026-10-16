@@ -39,7 +39,7 @@ const team = [
   member({ name: 'Ibrahima', user: { id: 'u-i', name: 'Ibrahima', email: 'ibrahima@test.com', invitationPending: true } }),
 ]
 
-function useTeamApi(members: Member[] = team) {
+function mockTeamApi(members: Member[] = team) {
   server.use(
     mock.get('/api/members', () => HttpResponse.json({ members })),
     mock.get('/api/roles', () => HttpResponse.json({ roles })),
@@ -52,7 +52,7 @@ const rowOf = async (name: string) => (await screen.findByText(name)).closest('t
 
 describe('Page Équipe', () => {
   it('liste les membres, leur statut, et désactive ce qu’on ne peut pas modifier', async () => {
-    useTeamApi()
+    mockTeamApi()
     renderApp('/members')
 
     const owner = await rowOf('Moussa')
@@ -62,7 +62,7 @@ describe('Page Équipe', () => {
   })
 
   it('renvoie une invitation en attente', async () => {
-    useTeamApi()
+    mockTeamApi()
     let resent = false
     server.use(
       mock.post('/api/members/m-Ibrahima/invite', () => {
@@ -79,7 +79,7 @@ describe('Page Équipe', () => {
   })
 
   it('affiche l’erreur du serveur si la liste ne se charge pas', async () => {
-    useTeamApi()
+    mockTeamApi()
     server.use(mock.get('/api/members', () => HttpResponse.json({ error: { message: "Vous n'avez pas les droits pour cette action" } }, { status: 403 })))
     renderApp('/members')
 
@@ -98,7 +98,7 @@ describe('Page Équipe', () => {
       editable: true,
       grantable: ['stock.view', 'stock.adjust', 'sales.create', 'cash_sessions.manage'],
     }
-    useTeamApi()
+    mockTeamApi()
     server.use(
       mock.get('/api/members', () => {
         memberListCalls += 1
@@ -127,7 +127,7 @@ describe('Page Équipe', () => {
   })
 
   it('droits en lecture seule : cases désactivées, pas de bouton Enregistrer', async () => {
-    useTeamApi()
+    mockTeamApi()
     server.use(
       mock.get('/api/members/m-Moussa/permissions', () =>
         HttpResponse.json({

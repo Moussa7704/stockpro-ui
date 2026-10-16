@@ -7,7 +7,7 @@ import { server } from './server'
  * Fausse API du catalogue, avec état (les créations et modifications sont relues ensuite)
  * et un journal des requêtes reçues pour vérifier ce que l'écran envoie.
  */
-export function useCatalogApi() {
+export function mockCatalogApi() {
   const units: Unit[] = [
     { id: 'u-pce', name: 'Pièce', symbol: 'pce', allowsDecimal: false, archivedAt: null },
     { id: 'u-kg', name: 'Kilogramme', symbol: 'kg', allowsDecimal: true, archivedAt: null },

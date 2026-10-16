@@ -30,7 +30,7 @@ const shop = (id: string, name: string, code: string, archivedAt: string | null 
 })
 
 /** Fausse API avec état pour les paramètres (boutiques, moyens de paiement, entreprise). */
-function useSettingsApi() {
+function mockSettingsApi() {
   const db = {
     company: { ...company },
     shops: [shop('s1', 'Boutique Centre', 'BTQ1'), shop('s2', 'Ancien dépôt', 'DEP', '2026-09-01T10:00:00.000Z')],
@@ -92,7 +92,7 @@ function useSettingsApi() {
 
 describe('Paramètres : entreprise', () => {
   it('modifie le nom et la remise maximale ; le nom de l’en-tête suit', async () => {
-    const db = useSettingsApi()
+    const db = mockSettingsApi()
     let meCalls = 0
     server.use(
       mock.get('/api/auth/me', () => {
@@ -125,7 +125,7 @@ describe('Paramètres : entreprise', () => {
 
 describe('Paramètres : boutiques', () => {
   it('cache les boutiques archivées par défaut, et les montre à la demande', async () => {
-    useSettingsApi()
+    mockSettingsApi()
     const { user } = renderApp('/settings?onglet=shops')
 
     expect(await screen.findByText('Boutique Centre', { selector: 'strong' })).toBeInTheDocument()
@@ -137,7 +137,7 @@ describe('Paramètres : boutiques', () => {
   })
 
   it('crée une boutique (code mis en majuscules) et affiche le refus du serveur', async () => {
-    const db = useSettingsApi()
+    const db = mockSettingsApi()
     const { user } = renderApp('/settings?onglet=shops')
 
     await user.click(await screen.findByRole('button', { name: /Nouvelle boutique/ }))
@@ -162,7 +162,7 @@ describe('Paramètres : boutiques', () => {
   })
 
   it('archive une boutique après confirmation', async () => {
-    const db = useSettingsApi()
+    const db = mockSettingsApi()
     const { user } = renderApp('/settings?onglet=shops')
 
     await user.click(await screen.findByRole('button', { name: 'Archiver Boutique Centre' }))
@@ -175,7 +175,7 @@ describe('Paramètres : boutiques', () => {
 
 describe('Paramètres : moyens de paiement', () => {
   it('désactive un moyen de paiement et en ajoute un nouveau', async () => {
-    const db = useSettingsApi()
+    const db = mockSettingsApi()
     const { user } = renderApp('/settings?onglet=payment-methods')
 
     await user.click(await screen.findByRole('switch', { name: 'Mobile Money actif en caisse' }))
@@ -195,7 +195,7 @@ describe('Paramètres : moyens de paiement', () => {
 
 describe('Paramètres : accès', () => {
   it('réservés à company.manage : ni menu, ni page', async () => {
-    useSettingsApi()
+    mockSettingsApi()
     const { router } = renderApp('/settings', { session: meResponse({ permissions: ['users.manage'] }) })
 
     const menu = await screen.findByRole('menu')

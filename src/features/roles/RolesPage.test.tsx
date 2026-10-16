@@ -18,7 +18,7 @@ const baseRoles: Role[] = [
 ]
 
 /** Fausse API avec état : création et suppression modifient ce que renvoie la liste ensuite. */
-function useRolesApi() {
+function mockRolesApi() {
   const db = { roles: [...baseRoles] }
   server.use(
     mock.get('/api/roles', () => HttpResponse.json({ roles: db.roles })),
@@ -32,7 +32,7 @@ const rowOf = async (name: string) => (await screen.findByText(name)).closest('t
 
 describe('Page Rôles', () => {
   it('rôles de base repérés, propriétaire non modifiable, suppression bloquée si le rôle est attribué', async () => {
-    useRolesApi()
+    mockRolesApi()
     renderApp('/roles')
 
     const owner = await rowOf('Propriétaire')
@@ -44,7 +44,7 @@ describe('Page Rôles', () => {
   })
 
   it('crée un rôle personnalisé en cochant ses permissions', async () => {
-    const db = useRolesApi()
+    const db = mockRolesApi()
     let sent: unknown = null
     server.use(
       mock.post('/api/roles', async ({ request }) => {
@@ -69,7 +69,7 @@ describe('Page Rôles', () => {
   })
 
   it('supprime un rôle personnalisé inutilisé après confirmation', async () => {
-    const db = useRolesApi()
+    const db = mockRolesApi()
     let deleted = false
     server.use(
       mock.delete('/api/roles/r-delivery', () => {
@@ -89,7 +89,7 @@ describe('Page Rôles', () => {
   })
 
   it('suppression refusée par le serveur : son message est affiché', async () => {
-    useRolesApi()
+    mockRolesApi()
     server.use(
       mock.delete('/api/roles/r-delivery', () =>
         HttpResponse.json({ error: { message: 'Ce rôle est attribué à 1 membre(s) : changez d’abord leur rôle' } }, { status: 409 }),
