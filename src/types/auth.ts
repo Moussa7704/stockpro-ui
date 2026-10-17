@@ -35,6 +35,8 @@ export interface ActiveCompany {
   permissions: Permission[]
   allShops: boolean
   shopIds: string[]
+  /** Couleur de l'interface choisie par l'entreprise (null : couleur StockPro) */
+  brandColor: string | null
 }
 
 // POST /api/auth/login : mot de passe correct → un code est envoyé par email,
