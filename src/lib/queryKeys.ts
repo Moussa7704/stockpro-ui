@@ -5,6 +5,11 @@
  */
 export const queryKeys = {
   company: ['company'] as const,
+  // Back-office de la plateforme (administrateur SaaS)
+  platform: {
+    companies: ['platform', 'companies'] as const,
+    company: (id: string) => ['platform', 'companies', id] as const,
+  },
   shops: {
     all: ['shops'] as const,
     withArchived: ['shops', 'with-archived'] as const,

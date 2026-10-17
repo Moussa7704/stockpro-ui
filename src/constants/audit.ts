@@ -8,6 +8,8 @@ export const ACTION_LABELS: Record<string, string> = {
   'company.settings_update': 'Paramètres de l’entreprise modifiés',
   'company.suspend': 'Entreprise suspendue',
   'company.reactivate': 'Entreprise réactivée',
+  'company.update': 'Entreprise modifiée par la plateforme',
+  'company.owner_invite': 'Invitation du propriétaire renvoyée',
   'shop.create': 'Boutique créée',
   'shop.update': 'Boutique modifiée',
   'shop.archive': 'Boutique archivée',

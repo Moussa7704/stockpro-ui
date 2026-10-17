@@ -1,13 +1,13 @@
-import { LogoutOutlined, ShopOutlined } from '@ant-design/icons'
+import { CrownOutlined, LogoutOutlined, ShopOutlined } from '@ant-design/icons'
 import { Alert, App, Button, List, Typography } from 'antd'
 import { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
 
 /** Membre de plusieurs entreprises : on choisit celle dans laquelle on travaille. */
 export function SelectCompanyPage() {
-  const { companies, activeCompany, switchCompany, logout } = useAuth()
+  const { user, companies, activeCompany, switchCompany, logout } = useAuth()
   const { message } = App.useApp()
   const navigate = useNavigate()
   const location = useLocation()
@@ -34,6 +34,14 @@ export function SelectCompanyPage() {
         </Typography.Title>
         <Typography.Text type="secondary">Vous pourrez en changer à tout moment.</Typography.Text>
       </div>
+
+      {user?.isPlatformAdmin && (
+        <Link to="/platform">
+          <Button block icon={<CrownOutlined />}>
+            Back-office plateforme
+          </Button>
+        </Link>
+      )}
 
       {companies.length === 0 ? (
         <Alert

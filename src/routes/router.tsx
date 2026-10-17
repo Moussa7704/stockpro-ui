@@ -33,7 +33,10 @@ import { StockLevelsPage } from '../features/stock/StockLevelsPage'
 import { TransfersPage } from '../features/stock/TransfersPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
-import { CompanyRoute, PermissionRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
+import { PlatformLayout } from '../layouts/PlatformLayout'
+import { PlatformCompaniesPage } from '../features/platform/PlatformCompaniesPage'
+import { PlatformCompanyPage } from '../features/platform/PlatformCompanyPage'
+import { CompanyRoute, PermissionRoute, PlatformRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
 
 // Exportées seules : les tests les montent dans un routeur en mémoire (createMemoryRouter)
 export const routes: RouteObject[] = [
@@ -63,6 +66,19 @@ export const routes: RouteObject[] = [
         // Membre de plusieurs entreprises : choix de l'entreprise active
         element: <AuthLayout />,
         children: [{ path: '/select-company', element: <SelectCompanyPage /> }],
+      },
+      {
+        // Back-office de la plateforme : hors entreprise (un super-admin peut n'être membre de rien)
+        element: <PlatformRoute />,
+        children: [
+          {
+            element: <PlatformLayout />,
+            children: [
+              { path: '/platform', element: <PlatformCompaniesPage /> },
+              { path: '/platform/companies/:id', element: <PlatformCompanyPage /> },
+            ],
+          },
+        ],
       },
       {
         element: <CompanyRoute />,
