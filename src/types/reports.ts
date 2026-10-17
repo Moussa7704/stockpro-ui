@@ -27,7 +27,11 @@ export interface TopProduct {
   marginRate: string | null
 }
 
-// GET /api/reports/dashboard
+/** Chiffres d'une période du tableau de bord, avec dépenses et résultat (marge − dépenses). */
+export type PeriodFigures = SalesFigures & { from: string; to: string; expenses: string; netResult: string }
+
+// GET /api/reports/dashboard?from&to : today, yesterday, month et last7Days restent ceux du jour ;
+// stock, créances et caisses sont la situation à l'instant
 export interface Dashboard {
   date: string
   currency: string
@@ -36,6 +40,13 @@ export interface Dashboard {
   yesterday: SalesFigures
   month: SalesFigures & { from: string; expenses: string; netResult: string }
   last7Days: { date: string; salesCount: number; netRevenue: string }[]
+  /** Période demandée (par défaut le mois en cours) et sa période de comparaison */
+  period: PeriodFigures & {
+    days: number
+    previous: PeriodFigures
+    groupBy: 'day' | 'month'
+    chart: { period: string; salesCount: number; netRevenue: string }[]
+  }
   topProducts: TopProduct[]
   stock: { value: string; lowStockCount: number; outOfStockCount: number }
   customers: { debtorsCount: number; totalDebt: string }

@@ -6,8 +6,10 @@ import { api, http } from './api'
 
 type Period = { from: string; to: string; shopId?: string }
 
-export function getDashboard(shopId?: string) {
-  return api<{ dashboard: Dashboard }>('/reports/dashboard', { params: { shopId } })
+export type DashboardQuery = { shopId?: string; from?: string; to?: string }
+
+export function getDashboard(query: DashboardQuery = {}) {
+  return api<{ dashboard: Dashboard }>('/reports/dashboard', { params: { ...query } })
 }
 export function getSalesReport(query: Period & { groupBy: SalesReport['groupBy'] }) {
   return api<{ report: SalesReport }>('/reports/sales', { params: { ...query } })
