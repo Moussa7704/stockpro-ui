@@ -1,5 +1,6 @@
+import dayjs from 'dayjs'
 import { http as mock, HttpResponse } from 'msw'
-import type { Dashboard, SalesFigures } from '../types/reports'
+import type { Dashboard, PeriodFigures, SalesFigures } from '../types/reports'
 import type { StockAlert } from '../types/stock'
 import { server } from './server'
 
@@ -17,6 +18,42 @@ const figures = (netRevenue: string, overrides: Partial<SalesFigures> = {}): Sal
   ...overrides,
 })
 
+const periodFigures = (from: string, to: string, netRevenue: string, grossMargin: string, overrides: Partial<PeriodFigures> = {}): PeriodFigures => ({
+  ...figures(netRevenue, { salesCount: 60, grossMargin, marginRate: '25.0', averageBasket: '15000.00', refunds: '20000.00', discounts: '5000.00' }),
+  from,
+  to,
+  expenses: '100000.00',
+  netResult: `${Number(grossMargin) - 100000}.00`,
+  ...overrides,
+})
+
+/**
+ * Période du tableau de bord, calculée comme le serveur : comparaison avec les mois précédents
+ * pour des mois entiers, sinon autant de jours juste avant ; graphique par mois au-delà de 92 jours.
+ */
+export function periodFixture(from: string, to: string): Dashboard['period'] {
+  const start = dayjs(from)
+  const end = dayjs(to)
+  const days = end.diff(start, 'day') + 1
+  const wholeMonths = start.date() === 1 && end.date() === end.daysInMonth()
+  const months = end.diff(start, 'month') + 1
+  const previous = wholeMonths
+    ? { from: start.subtract(months, 'month').format('YYYY-MM-DD'), to: start.subtract(1, 'day').format('YYYY-MM-DD') }
+    : { from: start.subtract(days, 'day').format('YYYY-MM-DD'), to: start.subtract(1, 'day').format('YYYY-MM-DD') }
+  const groupBy = days > 92 ? 'month' : 'day'
+  const points = groupBy === 'day' ? Array.from({ length: days }, (_, index) => start.add(index, 'day')) : Array.from({ length: months }, (_, index) => start.startOf('month').add(index, 'month'))
+  return {
+    ...periodFigures(from, to, '900000.00', '225000.00'),
+    days,
+    previous: periodFigures(previous.from, previous.to, '600000.00', '150000.00'),
+    groupBy,
+    chart: points.map((point, index) => ({ period: point.format('YYYY-MM-DD'), salesCount: index, netRevenue: `${(index + 1) * 1000}.00` })),
+  }
+}
+
+/** Meilleurs produits d'une période passée : différents de ceux du mois, pour vérifier qu'ils suivent la période. */
+export const periodTopProducts = [{ productId: 'p-oil', sku: 'HUILE-5', name: 'Huile 5 L', unit: 'pce', quantity: '12.000', salesCount: 9, revenue: '96000.00', cost: '80000.00', grossMargin: '16000.00', marginRate: '16.7' }]
+
 export const dashboardFixture: Dashboard = {
   date: '2026-10-16',
   currency: 'XOF',
@@ -26,6 +63,7 @@ export const dashboardFixture: Dashboard = {
   month: { ...figures('2400000.00', { grossMargin: '600000.00', marginRate: '25.0' }), from: '2026-10-01', expenses: '650000.00', netResult: '-50000.00' },
   last7Days: ['10', '11', '12', '13', '14', '15', '16'].map((day, index) => ({ date: `2026-10-${day}`, salesCount: index, netRevenue: `${(index + 1) * 10000}.00` })),
   topProducts: [{ productId: 'p-rice', sku: 'RIZ-25', name: 'Riz parfumé 25 kg', unit: 'pce', quantity: '40.000', salesCount: 30, revenue: '600000.00', cost: '480000.00', grossMargin: '120000.00', marginRate: '20.0' }],
+  period: periodFixture('2026-10-01', '2026-10-16'),
   stock: { value: '3500000.00', lowStockCount: 3, outOfStockCount: 1 },
   customers: { debtorsCount: 2, totalDebt: '85000.00' },
   openCashSessions: 1,
@@ -71,8 +109,11 @@ export function mockReportsApi(options: { failExport?: boolean; alerts?: StockAl
       return HttpResponse.json({ alerts: options.alerts ?? alertsFixture })
     }),
     mock.get('/api/reports/dashboard', ({ request }) => {
-      record(request)
-      return HttpResponse.json({ dashboard: dashboardFixture })
+      const params = record(request)
+      const from = params.get('from')
+      const to = params.get('to')
+      if (!from || !to) return HttpResponse.json({ dashboard: dashboardFixture })
+      return HttpResponse.json({ dashboard: { ...dashboardFixture, period: periodFixture(from, to), topProducts: periodTopProducts } })
     }),
     mock.get('/api/reports/sales', ({ request }) => {
       const params = record(request)

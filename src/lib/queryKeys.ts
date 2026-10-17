@@ -87,7 +87,7 @@ export const queryKeys = {
   },
   reports: {
     all: ['reports'] as const,
-    dashboard: (shopId?: string) => ['reports', 'dashboard', shopId ?? 'all'] as const,
+    dashboard: (query: { shopId?: string; from?: string; to?: string }) => ['reports', 'dashboard', query.shopId ?? 'all', query.from ?? 'today', query.to ?? 'today'] as const,
     report: (name: string, params: object) => ['reports', name, params] as const,
   },
   expenses: {
