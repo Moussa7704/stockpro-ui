@@ -88,6 +88,18 @@ export interface MessageResponse {
 }
 
 // loading : on ne sait pas encore si une session existe (appel /refresh en cours)
+// GET /api/auth/sessions : un appareil connecté
+export interface AccountSession {
+  id: string
+  userAgent: string | null
+  ipAddress: string | null
+  startedAt: string
+  lastActiveAt: string
+  expiresAt: string
+  /** L'appareil utilisé en ce moment */
+  current: boolean
+}
+
 // unavailable : serveur injoignable au démarrage (session peut-être valide, on réessaie)
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous' | 'unavailable'
 

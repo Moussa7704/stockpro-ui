@@ -1,10 +1,13 @@
 import { LockOutlined } from '@ant-design/icons'
 import { Alert, App, Button, Card, Descriptions, Form, Input, Tag, Typography } from 'antd'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useAuth } from '../../hook/useAuth'
 import { getErrorMessage } from '../../services/api'
 import * as authService from '../../services/auth.service'
+import { queryKeys } from '../../lib/queryKeys'
 import { confirmPasswordRules, newPasswordRules } from '../auth/passwordRules'
+import { SessionsCard } from './SessionsCard'
 
 interface ChangePasswordValues {
   currentPassword: string
@@ -38,6 +41,8 @@ export function AccountPage() {
 
         <ChangePasswordCard />
       </div>
+
+      <SessionsCard />
     </div>
   )
 }
@@ -45,6 +50,7 @@ export function AccountPage() {
 function ChangePasswordCard() {
   const [form] = Form.useForm<ChangePasswordValues>()
   const { message } = App.useApp()
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -55,6 +61,8 @@ function ChangePasswordCard() {
       const result = await authService.changePassword({ currentPassword, newPassword })
       message.success(result.message)
       form.resetFields()
+      // Les autres appareils viennent d'être déconnectés : la liste se met à jour
+      void queryClient.invalidateQueries({ queryKey: queryKeys.account.sessions })
     } catch (err) {
       setError(getErrorMessage(err))
     } finally {
