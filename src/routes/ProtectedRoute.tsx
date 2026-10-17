@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { FullPageLoader } from '../components/FullPageLoader'
+import { ServerUnavailable } from '../components/ServerUnavailable'
 import { useAuth } from '../hook/useAuth'
 import type { Permission } from '../types/access'
 
@@ -9,6 +10,8 @@ export function ProtectedRoute() {
   const location = useLocation()
 
   if (status === 'loading') return <FullPageLoader />
+  // Session non vérifiée (serveur injoignable) : surtout pas la page de connexion
+  if (status === 'unavailable') return <ServerUnavailable />
   if (status === 'anonymous') {
     // On mémorise la page demandée pour y revenir après la connexion
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
@@ -44,6 +47,7 @@ export function PublicOnlyRoute() {
   const { status } = useAuth()
 
   if (status === 'loading') return <FullPageLoader />
+  if (status === 'unavailable') return <ServerUnavailable />
   if (status === 'authenticated') return <Navigate to="/" replace />
   return <Outlet />
 }

@@ -33,20 +33,34 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Issue d'un renouvellement de session :
+ * - ok : nouvel access token ;
+ * - rejected : le serveur refuse la session (401 : cookie absent, expiré ou révoqué) → déconnexion ;
+ * - unavailable : pas de réponse exploitable (réseau, serveur arrêté, 429, 5xx) → la session est
+ *   peut-être toujours valide : on ne déconnecte SURTOUT pas, on réessaiera.
+ */
+export type RefreshResult = { status: 'ok'; token: string } | { status: 'rejected' } | { status: 'unavailable'; error: ApiError }
+
 // Le serveur remplace le refresh token à chaque appel (rotation) : si deux requêtes
 // expirent en même temps, elles doivent partager le même /refresh, sinon la seconde
 // enverrait un cookie déjà utilisé et la session serait coupée
-let refreshPromise: Promise<string | null> | null = null
+let refreshPromise: Promise<RefreshResult> | null = null
 
-export function refreshAccessToken(): Promise<string | null> {
+export function refreshSession(): Promise<RefreshResult> {
   // axios "nu" : surtout pas l'instance http, dont l'intercepteur rappellerait /refresh en boucle
   refreshPromise ??= axios
     .post<RefreshResponse>('/api/auth/refresh')
-    .then((res) => res.data.accessToken)
-    .catch(() => null)
-    .then((token) => {
-      accessToken = token
-      return token
+    .then((res): RefreshResult => {
+      accessToken = res.data.accessToken
+      return { status: 'ok', token: res.data.accessToken }
+    })
+    .catch(async (error: unknown): Promise<RefreshResult> => {
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        accessToken = null
+        return { status: 'rejected' }
+      }
+      return { status: 'unavailable', error: await toApiError(error) }
     })
     .finally(() => {
       refreshPromise = null
@@ -95,12 +109,14 @@ http.interceptors.response.use(undefined, async (error: unknown) => {
   // On le renouvelle une seule fois puis on rejoue la requête.
   if (error instanceof AxiosError && error.response?.status === 401 && config && sentToken && !config._retried) {
     config._retried = true
-    const newToken = await refreshAccessToken()
-    if (newToken) {
-      config.headers = AxiosHeaders.from(config.headers).set('Authorization', `Bearer ${newToken}`)
+    const refreshed = await refreshSession()
+    if (refreshed.status === 'ok') {
+      config.headers = AxiosHeaders.from(config.headers).set('Authorization', `Bearer ${refreshed.token}`)
       return http(config)
     }
-    onSessionExpired?.()
+    if (refreshed.status === 'rejected') onSessionExpired?.()
+    // Serveur indisponible : la session est gardée, l'erreur du renouvellement est affichée
+    else throw refreshed.error
   }
   throw await toApiError(error)
 })

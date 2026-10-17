@@ -86,7 +86,8 @@ export interface MessageResponse {
 }
 
 // loading : on ne sait pas encore si une session existe (appel /refresh en cours)
-export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
+// unavailable : serveur injoignable au démarrage (session peut-être valide, on réessaie)
+export type AuthStatus = 'loading' | 'authenticated' | 'anonymous' | 'unavailable'
 
 // Ce que la page de vérification doit connaître pour valider ou renvoyer le code
 export type OtpChallenge = Omit<LoginChallengeResponse, 'otpRequired'>
