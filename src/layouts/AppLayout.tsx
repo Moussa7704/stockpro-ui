@@ -7,6 +7,7 @@ import {
   DatabaseOutlined,
   ColumnWidthOutlined,
   CreditCardOutlined,
+  CrownOutlined,
   DashboardOutlined,
   DollarOutlined,
   DownOutlined,
@@ -186,6 +187,8 @@ export function AppLayout() {
 
   const userMenu: MenuProps['items'] = [
     { key: 'account', icon: <UserOutlined />, label: <Link to="/account">Mon compte</Link> },
+    // Administrateur SaaS : accès au back-office des commerçants
+    ...(user?.isPlatformAdmin ? [{ key: 'platform', icon: <CrownOutlined />, label: <Link to="/platform">Back-office plateforme</Link> }] : []),
     { type: 'divider' },
     {
       key: 'logout',

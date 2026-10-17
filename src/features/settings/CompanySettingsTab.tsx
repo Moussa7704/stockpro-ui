@@ -9,6 +9,7 @@ import { useAppDispatch } from '../../store/hooks'
 import type { Company } from '../../types/settings'
 import { HEX_COLOR, isReadableBrandColor } from '../../lib/brand'
 import { currencyLabel } from '../../utils/format'
+import { timezoneOptions } from '../../utils/timezones'
 import { BrandColorField } from './BrandColorField'
 import { useCompany } from './queries'
 
@@ -17,19 +18,6 @@ interface CompanyValues {
   timezone: string
   maxCashierDiscountPercent: number | null
   brandColor: string | null
-}
-
-/** Fuseaux proposés : l'Afrique d'abord (clientèle visée), puis tous les autres. */
-function timezoneOptions(current: string) {
-  const all = Intl.supportedValuesOf('timeZone')
-  const zones = all.includes(current) ? all : [current, ...all]
-  const africa = zones.filter((zone) => zone.startsWith('Africa/'))
-  const others = zones.filter((zone) => !zone.startsWith('Africa/'))
-  const toOption = (zone: string) => ({ value: zone, label: zone.replaceAll('_', ' ') })
-  return [
-    { label: 'Afrique', options: africa.map(toOption) },
-    { label: 'Autres fuseaux', options: others.map(toOption) },
-  ]
 }
 
 function CompanyForm({ company }: { company: Company }) {
