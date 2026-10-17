@@ -1,4 +1,4 @@
-import { EditOutlined, InboxOutlined, PlusOutlined, SearchOutlined, UndoOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, EditOutlined, InboxOutlined, PlusOutlined, SearchOutlined, UndoOutlined } from '@ant-design/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Input, Popconfirm, Segmented, Space, Table, Tag, Tooltip, TreeSelect, Typography } from 'antd'
 import type { TableColumnsType, TableProps } from 'antd'
@@ -12,6 +12,7 @@ import * as catalogService from '../../services/catalog.service'
 import type { Product, ProductSortField, ProductStatus } from '../../types/catalog'
 import { formatQuantity } from '../../utils/format'
 import { buildCategoryTree, toTreeSelectData } from './categoryTree'
+import { ProductStockDrawer } from '../stock/ProductStockDrawer'
 import { ProductFormModal } from './ProductFormModal'
 import { useCategories, useProducts } from './queries'
 
@@ -31,6 +32,8 @@ export function ProductsPage() {
   const { message } = App.useApp()
   const queryClient = useQueryClient()
   const canManage = usePermission('products.manage')
+  const canViewStock = usePermission('stock.view')
+  const [stockProduct, setStockProduct] = useState<Product | null>(null)
   // Le prix d'achat révèle la marge : affiché à ceux qui gèrent le catalogue ou les comptes
   const canSeePurchasePrice = usePermission('reports.view') || canManage
 
@@ -136,32 +139,41 @@ export function ProductsPage() {
       responsive: ['xl'],
       render: (_, product) => (Number(product.alertThreshold) > 0 ? `${formatQuantity(product.alertThreshold)} ${product.unit.symbol}` : '—'),
     },
-    ...(canManage
+    ...(canManage || canViewStock
       ? [
           {
             title: '',
             key: 'actions',
-            width: 100,
+            width: canManage && canViewStock ? 130 : 100,
             render: (_: unknown, product: Product) => {
               const archived = product.status === 'archived'
               return (
                 <Space size={4}>
-                  <Tooltip title="Modifier">
-                    <Button icon={<EditOutlined />} size="small" onClick={() => setFormProduct(product)} aria-label={`Modifier ${product.name}`} />
-                  </Tooltip>
-                  <Popconfirm
-                    title={archived ? `Remettre « ${product.name} » en vente ?` : `Archiver « ${product.name} » ?`}
-                    description={archived ? undefined : 'Il ne sera plus vendu ni commandé. Son historique est conservé.'}
-                    okText={archived ? 'Remettre en vente' : 'Archiver'}
-                    cancelText="Annuler"
-                    onConfirm={() => archive.mutate({ product, archived: !archived })}
-                  >
-                    <Button
-                      icon={archived ? <UndoOutlined /> : <InboxOutlined />}
-                      size="small"
-                      aria-label={archived ? `Remettre en vente ${product.name}` : `Archiver ${product.name}`}
-                    />
-                  </Popconfirm>
+                  {canViewStock && (
+                    <Tooltip title="Stock par boutique">
+                      <Button icon={<DatabaseOutlined />} size="small" onClick={() => setStockProduct(product)} aria-label={`Stock de ${product.name} par boutique`} />
+                    </Tooltip>
+                  )}
+                  {canManage && (
+                    <>
+                      <Tooltip title="Modifier">
+                        <Button icon={<EditOutlined />} size="small" onClick={() => setFormProduct(product)} aria-label={`Modifier ${product.name}`} />
+                      </Tooltip>
+                      <Popconfirm
+                        title={archived ? `Remettre « ${product.name} » en vente ?` : `Archiver « ${product.name} » ?`}
+                        description={archived ? undefined : 'Il ne sera plus vendu ni commandé. Son historique est conservé.'}
+                        okText={archived ? 'Remettre en vente' : 'Archiver'}
+                        cancelText="Annuler"
+                        onConfirm={() => archive.mutate({ product, archived: !archived })}
+                      >
+                        <Button
+                          icon={archived ? <UndoOutlined /> : <InboxOutlined />}
+                          size="small"
+                          aria-label={archived ? `Remettre en vente ${product.name}` : `Archiver ${product.name}`}
+                        />
+                      </Popconfirm>
+                    </>
+                  )}
                 </Space>
               )
             },
@@ -242,6 +254,7 @@ export function ProductsPage() {
           }}
         />
       )}
+      {stockProduct && <ProductStockDrawer product={stockProduct} onClose={() => setStockProduct(null)} />}
     </div>
   )
 }
