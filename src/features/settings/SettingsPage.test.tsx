@@ -115,7 +115,7 @@ describe('Paramètres : entreprise', () => {
     expect(db.requests.at(-1)).toEqual({
       method: 'PATCH',
       path: '/api/company',
-      body: { name: 'Commerce Diop', timezone: 'Africa/Abidjan', settings: { maxCashierDiscountPercent: 15 } },
+      body: { name: 'Commerce Diop', timezone: 'Africa/Abidjan', settings: { maxCashierDiscountPercent: 15, brandColor: null } },
     })
     // La session est relue : l'en-tête affiche le nouveau nom
     await waitFor(() => expect(meCalls).toBe(1))
@@ -201,5 +201,77 @@ describe('Paramètres : accès', () => {
     const menu = await screen.findByRole('menu')
     expect(within(menu).queryByText('Paramètres')).not.toBeInTheDocument()
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+  })
+})
+
+describe('Paramètres : couleur de l’interface', () => {
+  const brand = () => document.documentElement.style.getPropertyValue('--color-brand')
+
+  it('une couleur proposée : aperçu, enregistrement, puis toute l’interface la prend', async () => {
+    const db = mockSettingsApi()
+    let brandColor: string | null = null
+    server.use(mock.get('/api/auth/me', () => HttpResponse.json(meResponse({ brandColor }))))
+    const { user } = renderApp('/settings')
+
+    const teal = await screen.findByRole('radio', { name: 'Sarcelle' })
+    expect(screen.getByRole('radio', { name: 'Indigo StockPro' })).toHaveAttribute('aria-checked', 'true')
+    await user.click(teal)
+    expect(teal).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByLabelText('Code couleur')).toHaveValue('#0f766e')
+    // Avant l'enregistrement, seule la zone d'aperçu change
+    expect(brand()).toBe('#4f46e5')
+
+    brandColor = '#0f766e'
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(await screen.findByText('Paramètres de l’entreprise enregistrés')).toBeInTheDocument()
+    expect(db.requests.at(-1)?.body).toMatchObject({ settings: { brandColor: '#0f766e' } })
+    // Session relue : le thème suit la nouvelle couleur
+    await waitFor(() => expect(brand()).toBe('#0f766e'))
+  })
+
+  it('un code trop clair est refusé avant l’envoi, avec la raison', async () => {
+    const db = mockSettingsApi()
+    const { user } = renderApp('/settings')
+
+    const code = await screen.findByLabelText('Code couleur')
+    await user.type(code, '#FACC15')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(await screen.findByText(/Couleur trop claire : le texte blanc des boutons serait illisible/)).toBeInTheDocument()
+    expect(db.requests.some((request) => request.method === 'PATCH')).toBe(false)
+
+    await user.clear(code)
+    await user.type(code, 'rouge')
+    expect(await screen.findByText('Couleur invalide : format #RRGGBB attendu')).toBeInTheDocument()
+  })
+
+  it('rétablir la couleur StockPro envoie null', async () => {
+    const db = mockSettingsApi()
+    db.company = { ...db.company, settings: { ...db.company.settings, brandColor: '#9f1239' } }
+    server.use(mock.get('/api/auth/me', () => HttpResponse.json(meResponse())))
+    const { user } = renderApp('/settings', { session: meResponse({ brandColor: '#9f1239' }) })
+
+    expect(await screen.findByRole('radio', { name: 'Bordeaux' })).toHaveAttribute('aria-checked', 'true')
+    await user.click(screen.getByRole('button', { name: 'Rétablir la couleur StockPro' }))
+    expect(screen.getByRole('radio', { name: 'Indigo StockPro' })).toHaveAttribute('aria-checked', 'true')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => expect(db.requests.at(-1)?.body).toMatchObject({ settings: { brandColor: null } }))
+    await waitFor(() => expect(brand()).toBe('#4f46e5'))
+  })
+
+  it('le thème suit la couleur de l’entreprise active', async () => {
+    mockSettingsApi()
+    renderApp('/settings', { session: meResponse({ brandColor: '#be185d' }) })
+    await screen.findByLabelText('Nom de l’entreprise')
+    expect(brand()).toBe('#be185d')
+  })
+
+  it('couleur illisible reçue du serveur : couleur StockPro à la place', async () => {
+    mockSettingsApi()
+    renderApp('/settings', { session: meResponse({ brandColor: '#ffff00' }) })
+    await screen.findByLabelText('Nom de l’entreprise')
+    expect(brand()).toBe('#4f46e5')
   })
 })

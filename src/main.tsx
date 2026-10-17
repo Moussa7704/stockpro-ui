@@ -1,7 +1,6 @@
 import { StyleProvider } from '@ant-design/cssinjs'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { App as AntdApp, ConfigProvider } from 'antd'
-import frFR from 'antd/locale/fr_FR'
+import { App as AntdApp } from 'antd'
 import dayjs from 'dayjs'
 import 'dayjs/locale/fr'
 import { StrictMode } from 'react'
@@ -9,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import './index.css'
 import App from './App.tsx'
+import { BrandTheme } from './components/BrandTheme'
 import { queryClient } from './lib/queryClient'
 import { setSessionExpiredHandler } from './services/api'
 import { createAppStore } from './store'
@@ -29,12 +29,13 @@ createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         {/* layer : les styles antd vont dans @layer antd (voir index.css) */}
         <StyleProvider layer>
-          <ConfigProvider locale={frFR} theme={{ token: { colorPrimary: '#4f46e5', borderRadius: 8 } }}>
+          {/* Couleurs de l'entreprise active (StockPro par défaut) */}
+          <BrandTheme>
             {/* AntdApp : donne accès à message / notification / modal via App.useApp() */}
             <AntdApp>
               <App />
             </AntdApp>
-          </ConfigProvider>
+          </BrandTheme>
         </StyleProvider>
       </QueryClientProvider>
     </Provider>

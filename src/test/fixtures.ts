@@ -3,7 +3,7 @@ import type { MeResponse } from '../types/auth'
 
 /** Réponse de GET /api/auth/me, personnalisable test par test. */
 export function meResponse(
-  options: { permissions?: Permission[]; roleCode?: string; companies?: number; allShops?: boolean; shopIds?: string[] } = {},
+  options: { permissions?: Permission[]; roleCode?: string; companies?: number; allShops?: boolean; shopIds?: string[]; brandColor?: string | null } = {},
 ): MeResponse {
   const companies = Array.from({ length: options.companies ?? 1 }, (_, index) => ({
     id: `company-${index + 1}`,
@@ -29,6 +29,7 @@ export function meResponse(
       permissions: options.permissions ?? ['users.manage', 'roles.manage', 'company.manage'],
       allShops: options.allShops ?? true,
       shopIds: options.shopIds ?? [],
+      brandColor: options.brandColor ?? null,
     },
   }
 }

@@ -3,6 +3,8 @@
 export interface CompanySettings {
   // Remise maximale qu'un caissier peut accorder sans la permission sales.discount
   maxCashierDiscountPercent?: number
+  // Couleur de l'interface (#rrggbb) ; null : couleur StockPro
+  brandColor?: string | null
 }
 
 // GET /api/company : entreprise active
