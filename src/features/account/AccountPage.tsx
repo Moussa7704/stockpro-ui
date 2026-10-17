@@ -17,24 +17,27 @@ export function AccountPage() {
   if (!user) return null
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <Typography.Title level={2} className="mb-0">
         Mon compte
       </Typography.Title>
 
-      <Card title="Profil">
-        <Descriptions column={1}>
-          <Descriptions.Item label="Nom">{user.name}</Descriptions.Item>
-          <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
-          {activeCompany && (
-            <Descriptions.Item label={`Rôle chez ${activeCompany.name}`}>
-              <Tag color="blue">{activeCompany.role.name}</Tag>
-            </Descriptions.Item>
-          )}
-        </Descriptions>
-      </Card>
+      {/* Côte à côte sur grand écran, à la même hauteur ; l'une sous l'autre sur téléphone */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+        <Card title="Profil" className="h-full">
+          <Descriptions column={1}>
+            <Descriptions.Item label="Nom">{user.name}</Descriptions.Item>
+            <Descriptions.Item label="Email">{user.email}</Descriptions.Item>
+            {activeCompany && (
+              <Descriptions.Item label={`Rôle chez ${activeCompany.name}`}>
+                <Tag color="blue">{activeCompany.role.name}</Tag>
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        </Card>
 
-      <ChangePasswordCard />
+        <ChangePasswordCard />
+      </div>
     </div>
   )
 }
@@ -60,7 +63,7 @@ function ChangePasswordCard() {
   }
 
   return (
-    <Card title="Changer de mot de passe">
+    <Card title="Changer de mot de passe" className="h-full">
       <Typography.Paragraph type="secondary">
         Vos autres appareils seront déconnectés. Vous restez connecté sur celui-ci.
       </Typography.Paragraph>

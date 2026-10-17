@@ -31,14 +31,14 @@ function Welcome() {
   ].filter((shortcut) => shortcut.allowed)
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <Typography.Title level={2} className="mb-0">
         Bonjour {user?.name}
       </Typography.Title>
       <Typography.Text type="secondary">
         {activeCompany?.name} · {activeCompany?.role.name}
       </Typography.Text>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {shortcuts.map((shortcut) => (
           <Link key={shortcut.to} to={shortcut.to}>
             <Button block size="large" icon={shortcut.icon}>
