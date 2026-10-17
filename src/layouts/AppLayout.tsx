@@ -187,7 +187,14 @@ export function AppLayout() {
   const userMenu: MenuProps['items'] = [
     { key: 'account', icon: <UserOutlined />, label: <Link to="/account">Mon compte</Link> },
     { type: 'divider' },
-    { key: 'logout', icon: <LogoutOutlined />, label: 'Se déconnecter', danger: true, onClick: () => void logout() },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Se déconnecter',
+      danger: true,
+      // Serveur injoignable : la session reste ouverte, on le dit au lieu de faire semblant
+      onClick: () => void logout().catch((err: unknown) => message.error(`Déconnexion impossible : ${getErrorMessage(err)} Réessayez.`)),
+    },
   ]
 
   return (

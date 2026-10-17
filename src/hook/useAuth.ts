@@ -38,6 +38,7 @@ export function useAuth() {
       },
       /** Change l'entreprise active et recharge les droits. */
       switchCompany: (companyId: string) => dispatch(session.switchCompany(companyId)),
+      /** Rejette si le serveur ne répond pas : la session reste ouverte, à signaler à l'utilisateur. */
       logout: () => dispatch(session.logout()),
     }
   }, [dispatch, status, me])

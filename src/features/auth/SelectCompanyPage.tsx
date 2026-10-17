@@ -66,7 +66,7 @@ export function SelectCompanyPage() {
         />
       )}
 
-      <Button type="link" icon={<LogoutOutlined />} onClick={() => void logout()}>
+      <Button type="link" icon={<LogoutOutlined />} onClick={() => void logout().catch((err: unknown) => message.error(`Déconnexion impossible : ${getErrorMessage(err)} Réessayez.`))}>
         Se déconnecter
       </Button>
     </div>

@@ -5,6 +5,7 @@ import { getAccessToken } from '../services/api'
 import { meResponse, shopsFixture } from '../test/fixtures'
 import { renderApp } from '../test/render'
 import { server } from '../test/server'
+import { restoreSession } from '../store/authSlice'
 
 // L'en-tête charge la liste des boutiques sur toutes les pages connectées
 const shopsHandler = () => mock.get('/api/shops', () => HttpResponse.json({ shops: shopsFixture }))
@@ -116,5 +117,60 @@ describe('Mise en page', () => {
     await router.navigate('/account')
     await screen.findByRole('heading', { name: /Mon compte/ })
     expect(content.scrollTop).toBe(0)
+  })
+})
+
+describe('Session et serveur injoignable', () => {
+  it('au démarrage, serveur saturé : écran « Serveur injoignable », puis la session est retrouvée', async () => {
+    server.use(
+      shopsHandler(),
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ error: { message: 'Trop de requêtes, réessayez dans quelques minutes' } }, { status: 429 })),
+    )
+    const { store, user } = renderApp('/', { session: null })
+    await store.dispatch(restoreSession())
+
+    expect(await screen.findByText('Serveur injoignable')).toBeInTheDocument()
+    expect(screen.getByText(/Trop de requêtes, réessayez dans quelques minutes/)).toBeInTheDocument()
+    expect(screen.getByText(/Votre session n’est pas perdue/)).toBeInTheDocument()
+    // Surtout pas le formulaire de connexion (le test part d'un état anonyme, d'où l'adresse /login)
+    expect(screen.queryByLabelText('Mot de passe')).not.toBeInTheDocument()
+
+    server.use(
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ accessToken: 'session-token' })),
+      mock.get('/api/auth/me', () => HttpResponse.json(meResponse())),
+    )
+    await user.click(screen.getByRole('button', { name: /Réessayer maintenant/ }))
+    expect(await screen.findByRole('heading', { name: 'Bonjour Awa Diop' })).toBeInTheDocument()
+  })
+
+  it('déconnexion : la session est fermée par le serveur, retour à la connexion', async () => {
+    let loggedOut = false
+    server.use(
+      shopsHandler(),
+      mock.post('/api/auth/logout', () => {
+        loggedOut = true
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const { user, router } = renderApp('/', { session: meResponse() })
+
+    await user.click(await screen.findByRole('button', { name: 'Menu utilisateur' }))
+    await user.click(await screen.findByText('Se déconnecter'))
+
+    expect(await screen.findByLabelText('Mot de passe')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/login')
+    expect(loggedOut).toBe(true)
+  })
+
+  it('déconnexion sans réponse du serveur : on reste connecté et on le dit', async () => {
+    server.use(shopsHandler(), mock.post('/api/auth/logout', () => HttpResponse.error()))
+    const { user, router } = renderApp('/', { session: meResponse() })
+
+    await user.click(await screen.findByRole('button', { name: 'Menu utilisateur' }))
+    await user.click(await screen.findByText('Se déconnecter'))
+
+    expect(await screen.findByText(/Déconnexion impossible : Impossible de joindre le serveur\. Réessayez\./)).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
+    expect(screen.getByRole('heading', { name: 'Bonjour Awa Diop' })).toBeInTheDocument()
   })
 })

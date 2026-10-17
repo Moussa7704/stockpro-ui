@@ -1,7 +1,7 @@
 import { http as mock, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { createQueryClient } from '../lib/queryClient'
-import { getAccessToken, setAccessToken } from '../services/api'
+import { api, getAccessToken, setAccessToken, setSessionExpiredHandler } from '../services/api'
 import { meResponse } from '../test/fixtures'
 import { server } from '../test/server'
 import { logout, restoreSession, selectCan, sessionExpired, switchCompany, verifyOtp } from './authSlice'
@@ -72,16 +72,89 @@ describe('session (Redux Toolkit)', () => {
     expect(queryClient.getQueryData(['members'])).toBeUndefined()
   })
 
-  it('déconnexion : tout est oublié, même si le serveur ne répond pas', async () => {
+  it('déconnexion : session fermée par le serveur, tout est oublié', async () => {
     const { store, queryClient } = setup()
     setAccessToken('token')
-    server.use(mock.post('/api/auth/logout', () => HttpResponse.error()))
+    server.use(mock.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })))
 
-    await store.dispatch(logout()).catch(() => undefined)
+    await store.dispatch(logout())
 
     expect(store.getState().auth.status).toBe('anonymous')
     expect(getAccessToken()).toBeNull()
     expect(queryClient.getQueryData(['members'])).toBeUndefined()
+  })
+
+  it('déconnexion sans réponse du serveur : on ne fait pas semblant, la session reste', async () => {
+    const { store, queryClient } = setup()
+    server.use(
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ accessToken: 'token' })),
+      mock.get('/api/auth/me', () => HttpResponse.json(meResponse())),
+    )
+    await store.dispatch(restoreSession())
+    server.use(mock.post('/api/auth/logout', () => HttpResponse.error()))
+
+    await expect(store.dispatch(logout())).rejects.toMatchObject({ status: 0 })
+
+    // Le cookie serait toujours valide : afficher la connexion serait mentir
+    expect(store.getState().auth.status).toBe('authenticated')
+    expect(getAccessToken()).toBe('token')
+    expect(queryClient.getQueryData(['members'])).toEqual(['ancien membre'])
+  })
+
+  it('au démarrage, serveur saturé (429) ou arrêté : écran « réessayer », pas la connexion', async () => {
+    const { store } = setup()
+    server.use(mock.post('/api/auth/refresh', () => HttpResponse.json({ error: { message: 'Trop de requêtes, réessayez dans quelques minutes' } }, { status: 429 })))
+
+    await store.dispatch(restoreSession())
+    expect(store.getState().auth).toMatchObject({ status: 'unavailable', error: 'Trop de requêtes, réessayez dans quelques minutes' })
+
+    server.use(mock.post('/api/auth/refresh', () => HttpResponse.error()))
+    await store.dispatch(restoreSession())
+    expect(store.getState().auth).toMatchObject({ status: 'unavailable', error: 'Impossible de joindre le serveur.' })
+
+    // Le serveur répond de nouveau : la session est retrouvée
+    server.use(
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ accessToken: 'token' })),
+      mock.get('/api/auth/me', () => HttpResponse.json(meResponse())),
+    )
+    await store.dispatch(restoreSession())
+    expect(store.getState().auth.status).toBe('authenticated')
+    expect(store.getState().auth.error).toBeUndefined()
+  })
+
+  it('pendant l’utilisation : jeton expiré et renouvellement refusé (429) → session gardée, erreur affichée', async () => {
+    const { store } = setup()
+    server.use(
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ accessToken: 'token' })),
+      mock.get('/api/auth/me', () => HttpResponse.json(meResponse())),
+    )
+    await store.dispatch(restoreSession())
+    server.use(
+      mock.get('/api/members', () => HttpResponse.json({ error: { message: 'Jeton expiré' } }, { status: 401 })),
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ error: { message: 'Trop de requêtes, réessayez dans quelques minutes' } }, { status: 429 })),
+    )
+
+    await expect(api('/members')).rejects.toMatchObject({ status: 429, message: 'Trop de requêtes, réessayez dans quelques minutes' })
+    expect(store.getState().auth.status).toBe('authenticated')
+  })
+
+  it('pendant l’utilisation : renouvellement refusé (401) → déconnexion', async () => {
+    const { store } = setup()
+    let expired = 0
+    setSessionExpiredHandler(() => {
+      expired += 1
+    })
+    setAccessToken('token')
+    server.use(
+      mock.get('/api/members', () => HttpResponse.json({ error: { message: 'Jeton expiré' } }, { status: 401 })),
+      mock.post('/api/auth/refresh', () => HttpResponse.json({ error: { message: 'Session invalide' } }, { status: 401 })),
+    )
+
+    await expect(api('/members')).rejects.toMatchObject({ status: 401 })
+    expect(expired).toBe(1)
+    expect(getAccessToken()).toBeNull()
+    setSessionExpiredHandler(null)
+    expect(store.getState().auth.status).toBe('loading')
   })
 
   it('session expirée pendant l’utilisation : retour à l’état anonyme', () => {

@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import { refreshAccessToken, setAccessToken } from '../services/api'
+import { ApiError, refreshSession, setAccessToken } from '../services/api'
 import * as authService from '../services/auth.service'
 import type { Permission } from '../types/access'
 import type { AuthStatus, MeResponse } from '../types/auth'
@@ -12,6 +12,8 @@ import type { AppThunk, RootState } from './index'
 interface AuthState {
   status: AuthStatus
   session: MeResponse | null
+  /** Pourquoi la session n'a pas pu être vérifiée (status unavailable) */
+  error?: string
 }
 
 const initialState: AuthState = { status: 'loading', session: null }
@@ -23,32 +25,54 @@ const authSlice = createSlice({
     sessionLoaded(state, action: PayloadAction<MeResponse>) {
       state.status = 'authenticated'
       state.session = action.payload
+      delete state.error
     },
     sessionCleared(state) {
       state.status = 'anonymous'
       state.session = null
+      delete state.error
+    },
+    sessionChecking(state) {
+      state.status = 'loading'
+      delete state.error
+    },
+    sessionUnavailable(state, action: PayloadAction<string>) {
+      state.status = 'unavailable'
+      state.error = action.payload
     },
   },
 })
 
-export const { sessionLoaded, sessionCleared } = authSlice.actions
+export const { sessionLoaded, sessionCleared, sessionChecking, sessionUnavailable } = authSlice.actions
 export const authReducer = authSlice.reducer
 
 // --- Actions asynchrones (thunks simples : les ApiError remontent intactes, message compris)
 
-/** Au chargement de l'application : le cookie de session (httpOnly) permet de retrouver la session. */
+/**
+ * Au chargement de l'application : le cookie de session (httpOnly) permet de retrouver la session.
+ * Seul un refus du serveur (401) mène à la connexion ; serveur injoignable → écran « réessayer ».
+ */
 export function restoreSession(): AppThunk<Promise<void>> {
   return async (dispatch) => {
-    const token = await refreshAccessToken()
-    if (!token) {
+    dispatch(sessionChecking())
+    const refreshed = await refreshSession()
+    if (refreshed.status === 'rejected') {
       dispatch(sessionCleared())
+      return
+    }
+    if (refreshed.status === 'unavailable') {
+      dispatch(sessionUnavailable(refreshed.error.message))
       return
     }
     try {
       dispatch(sessionLoaded(await authService.getMe()))
-    } catch {
-      setAccessToken(null)
-      dispatch(sessionCleared())
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setAccessToken(null)
+        dispatch(sessionCleared())
+      } else {
+        dispatch(sessionUnavailable(err instanceof Error ? err.message : 'Impossible de joindre le serveur.'))
+      }
     }
   }
 }
@@ -80,16 +104,16 @@ export function reloadSession(): AppThunk<Promise<void>> {
   }
 }
 
+/**
+ * Déconnexion : le serveur ferme la session et efface le cookie. S'il ne répond pas, on NE fait
+ * PAS semblant : le cookie resterait valide et une actualisation reconnecterait. L'erreur remonte.
+ */
 export function logout(): AppThunk<Promise<void>> {
   return async (dispatch, _getState, { queryClient }) => {
-    try {
-      await authService.logout()
-    } finally {
-      // Même si le serveur ne répond pas, on oublie la session côté navigateur
-      setAccessToken(null)
-      queryClient.clear()
-      dispatch(sessionCleared())
-    }
+    await authService.logout()
+    setAccessToken(null)
+    queryClient.clear()
+    dispatch(sessionCleared())
   }
 }
 
