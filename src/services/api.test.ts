@@ -1,7 +1,7 @@
 import { http as mock, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { server } from '../test/server'
-import { api, ApiError, getAccessToken, getErrorMessage, newIdempotencyKey, setAccessToken, setSessionExpiredHandler } from './api'
+import { api, ApiError, getAccessToken, getErrorMessage, newIdempotencyKey, refreshSession, setAccessToken, setSessionExpiredHandler } from './api'
 
 describe('api() : appels à l’API', () => {
   it('envoie le token, les paramètres d’URL et renvoie les données', async () => {
@@ -116,5 +116,34 @@ describe('api() : renouvellement de la session', () => {
 
     await expect(api('/auth/login', { method: 'POST', body: {} })).rejects.toMatchObject({ message: 'Email ou mot de passe incorrect' })
     expect(refresh).not.toHaveBeenCalled()
+  })
+})
+
+describe('refreshSession() : renouvellement partagé entre onglets', () => {
+  it('409 (un autre onglet vient de renouveler) : un nouvel essai suffit, la session est gardée', async () => {
+    let calls = 0
+    server.use(
+      mock.post('/api/auth/refresh', () => {
+        calls += 1
+        return calls === 1 ? HttpResponse.json({ error: { message: 'Session renouvelée à l’instant, réessayez' } }, { status: 409 }) : HttpResponse.json({ accessToken: 'apres-409' })
+      }),
+    )
+
+    await expect(refreshSession()).resolves.toEqual({ status: 'ok', token: 'apres-409' })
+    expect(calls).toBe(2)
+    expect(getAccessToken()).toBe('apres-409')
+  })
+
+  it('409 deux fois : pas de boucle, serveur considéré indisponible (pas de déconnexion)', async () => {
+    let calls = 0
+    server.use(
+      mock.post('/api/auth/refresh', () => {
+        calls += 1
+        return HttpResponse.json({ error: { message: 'Session renouvelée à l’instant, réessayez' } }, { status: 409 })
+      }),
+    )
+
+    await expect(refreshSession()).resolves.toMatchObject({ status: 'unavailable', error: { status: 409 } })
+    expect(calls).toBe(2)
   })
 })

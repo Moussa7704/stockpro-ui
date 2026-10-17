@@ -114,6 +114,7 @@ describe('Mise en page', () => {
     expect(content).not.toContainElement(nav)
 
     content.scrollTop = 400
+    server.use(mock.get('/api/auth/sessions', () => HttpResponse.json({ sessions: [] })))
     await router.navigate('/account')
     await screen.findByRole('heading', { name: /Mon compte/ })
     expect(content.scrollTop).toBe(0)

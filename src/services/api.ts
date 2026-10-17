@@ -47,10 +47,24 @@ export type RefreshResult = { status: 'ok'; token: string } | { status: 'rejecte
 // enverrait un cookie déjà utilisé et la session serait coupée
 let refreshPromise: Promise<RefreshResult> | null = null
 
+/** Pause avant de réessayer quand un autre onglet vient de renouveler la même session. */
+export const REFRESH_RETRY_DELAY_MS = 300
+
+// axios "nu" : surtout pas l'instance http, dont l'intercepteur rappellerait /refresh en boucle.
+// 409 : un autre onglet a renouvelé la session à l'instant ; le navigateur a déjà le nouveau
+// cookie, un seul nouvel essai suffit.
+async function postRefresh() {
+  try {
+    return await axios.post<RefreshResponse>('/api/auth/refresh')
+  } catch (error) {
+    if (!(error instanceof AxiosError && error.response?.status === 409)) throw error
+    await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_DELAY_MS))
+    return axios.post<RefreshResponse>('/api/auth/refresh')
+  }
+}
+
 export function refreshSession(): Promise<RefreshResult> {
-  // axios "nu" : surtout pas l'instance http, dont l'intercepteur rappellerait /refresh en boucle
-  refreshPromise ??= axios
-    .post<RefreshResponse>('/api/auth/refresh')
+  refreshPromise ??= postRefresh()
     .then((res): RefreshResult => {
       accessToken = res.data.accessToken
       return { status: 'ok', token: res.data.accessToken }

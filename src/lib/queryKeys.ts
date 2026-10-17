@@ -5,6 +5,7 @@
  */
 export const queryKeys = {
   company: ['company'] as const,
+  account: { sessions: ['account', 'sessions'] as const },
   // Back-office de la plateforme (administrateur SaaS)
   platform: {
     companies: ['platform', 'companies'] as const,

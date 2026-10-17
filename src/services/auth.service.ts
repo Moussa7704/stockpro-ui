@@ -1,4 +1,5 @@
 import type {
+  AccountSession,
   LoginChallengeResponse,
   LoginOtpResponse,
   MeResponse,
@@ -30,6 +31,20 @@ export function resendOtp(challengeToken: string) {
 
 export function logout() {
   return api<void>('/auth/logout', { method: 'POST' })
+}
+
+/** Appareils connectés de l'utilisateur, celui-ci en premier. */
+export function listSessions() {
+  return api<{ sessions: AccountSession[] }>('/auth/sessions')
+}
+
+/** Déconnecte un autre appareil : effet immédiat. */
+export function revokeSession(id: string) {
+  return api<void>(`/auth/sessions/${id}`, { method: 'DELETE' })
+}
+
+export function revokeOtherSessions() {
+  return api<{ revoked: number }>('/auth/sessions/revoke-others', { method: 'POST' })
 }
 
 export function getMe() {
