@@ -1,10 +1,14 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mockCustomersApi } from '../../test/customersApi'
 import { meResponse } from '../../test/fixtures'
 import { mobileMethod } from '../../test/posApi'
+import { printText } from '../../utils/print'
 import { renderApp } from '../../test/render'
 import { mockStockApi } from '../../test/stockApi'
+
+// Impression : jsdom n'imprime pas, on vérifie seulement ce qui est envoyé à l'imprimante
+vi.mock('../../utils/print', () => ({ printText: vi.fn(), printTable: vi.fn() }))
 
 const cashier = meResponse({ permissions: ['customers.manage', 'customer_payments.manage', 'sales.create'], roleCode: 'cashier' })
 const manager = meResponse({ permissions: ['customers.manage', 'customer_payments.manage', 'reports.view', 'expenses.manage'] })
@@ -86,6 +90,30 @@ describe('Fiche client : règlement de dette', () => {
       body: { shopId: 'shop-1', paymentMethodId: mobileMethod.id, amount: '20000', reference: null },
       idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
     })
+
+    // Le reçu s'ouvre aussitôt : le client repart avec
+    const receipt = await screen.findByLabelText('Aperçu du reçu')
+    expect(receipt).toHaveTextContent('REÇU DE RÈGLEMENT')
+    expect(receipt).toHaveTextContent('Boutique Centre')
+    expect(receipt).toHaveTextContent('Moyen : Mobile Money')
+    expect(receipt).toHaveTextContent(/Dette restante\s+10 000 FCFA/)
+    await user.click(screen.getByRole('button', { name: /Imprimer/ }))
+    expect(printText).toHaveBeenCalledWith(expect.stringContaining('Montant reçu'), expect.stringMatching(/^Reçu R-/))
+  })
+
+  it('réimprimer le reçu d’un règlement depuis l’onglet Règlements : dette du jour, datée', async () => {
+    const { db } = setup({ sessionOpen: true })
+    db.payments.push({ id: '9f3c2a1b-0000-4000-8000-0000000000aa', customerId: 'cu-awa', shopId: 'shop-1', amount: '5000.00', reference: null, cashSessionId: null, createdAt: '2026-10-10T10:00:00.000Z', paymentMethod: { id: 'pm-cash', code: 'cash', name: 'Espèces', type: 'cash' } })
+    const { user } = renderApp('/customers/cu-awa', { session: cashier })
+
+    await user.click(await screen.findByRole('tab', { name: 'Règlements' }))
+    await user.click(await screen.findByRole('button', { name: /Reçu du règlement/ }))
+
+    const receipt = await screen.findByLabelText('Aperçu du reçu')
+    expect(receipt).toHaveTextContent('R-9F3C2A1B')
+    expect(receipt).toHaveTextContent(/Montant reçu\s+5 000 FCFA/)
+    expect(receipt).toHaveTextContent(/Dette au \d{1,2} \S+ \d{4}\s+30 000 FCFA/)
+    expect(receipt).not.toHaveTextContent('Dette restante')
   })
 
   it('relevé sur la période : soldes d’ouverture et de clôture', async () => {

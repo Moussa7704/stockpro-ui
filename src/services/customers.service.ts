@@ -48,6 +48,10 @@ export function getStatement(id: string, from: string, to: string) {
 export function listCustomerPayments(id: string, query: Page) {
   return api<Paginated<CustomerPayment>>(`/customers/${id}/payments`, { params: { ...query } })
 }
+/** Un règlement (reçu), avec la dette actuelle du client. */
+export function getCustomerPayment(paymentId: string) {
+  return api<{ payment: CustomerPayment }>(`/customers/payments/${paymentId}`)
+}
 /** Règlement de dette : idempotence obligatoire, jamais plus que la dette. */
 export function createCustomerPayment(customerId: string, input: CustomerPaymentInput, idempotencyKey: string) {
   return api<{ payment: CustomerPayment }>(`/customers/${customerId}/payments`, { method: 'POST', body: input, idempotencyKey })

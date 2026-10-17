@@ -89,6 +89,7 @@ export const queryKeys = {
     ledger: (id: string, query: object) => ['customers', 'ledger', id, query] as const,
     statement: (id: string, from: string, to: string) => ['customers', 'statement', id, from, to] as const,
     payments: (id: string, query: object) => ['customers', 'payments', id, query] as const,
+    payment: (paymentId: string) => ['customers', 'payment', paymentId] as const,
     debtors: (query: object) => ['customers', 'debtors', query] as const,
   },
   reports: {
