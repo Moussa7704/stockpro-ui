@@ -1,8 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react'
+import { http as mock, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { mockCatalogApi } from '../../test/catalogApi'
 import { meResponse } from '../../test/fixtures'
 import { renderApp } from '../../test/render'
+import { server } from '../../test/server'
 
 const manager = meResponse({ permissions: ['products.view', 'products.manage', 'prices.manage', 'reports.view'] })
 
@@ -102,5 +104,64 @@ describe('Produits : fiche', () => {
     expect(await screen.findByText('« Sucre en poudre » archivé')).toBeInTheDocument()
     expect(lastRequest('PATCH', '/api/products/p-sugar')?.body).toEqual({ status: 'archived' })
     await waitFor(() => expect(screen.queryByText('Sucre en poudre')).not.toBeInTheDocument())
+  })
+})
+
+describe('Produits : stock par boutique', () => {
+  const stockHandler = (withCosts: boolean) =>
+    mock.get('/api/stock/products/:id', () =>
+      HttpResponse.json({
+        product: { id: 'p-rice', sku: 'RIZ-25', name: 'Riz parfumé 25 kg' },
+        stock: [
+          { shop: { id: 'shop-1', code: 'BTQ1', name: 'Boutique Centre' }, quantity: '12.000', ...(withCosts && { averageCost: '12000.0000' }) },
+          { shop: { id: 'shop-2', code: 'BTQ2', name: 'Boutique Marché' }, quantity: '3.000', ...(withCosts && { averageCost: '12500.0000' }) },
+          { shop: { id: 'shop-3', code: 'DEP', name: 'Dépôt' }, quantity: '0.000', ...(withCosts && { averageCost: '0.0000' }) },
+        ],
+      }),
+    )
+
+  it('quantité, état en toutes lettres, coût et valeur par boutique, totaux, lien vers les mouvements', async () => {
+    const { db } = mockCatalogApi()
+    db.products[0]!.alertThreshold = '5.000'
+    server.use(stockHandler(true))
+    const { user } = renderApp('/products', { session: meResponse({ permissions: ['products.view', 'stock.view', 'reports.view'] }) })
+
+    await user.click(await screen.findByRole('button', { name: 'Stock de Riz parfumé 25 kg par boutique' }))
+
+    const drawer = (await screen.findByText('Stock par boutique — Riz parfumé 25 kg', { selector: '.ant-drawer-title' })).closest('[role="dialog"]') as HTMLElement
+    expect(await within(drawer).findByText('Boutique Centre')).toBeInTheDocument()
+    expect(within(drawer).getByText(/seuil d’alerte : 5 pce/)).toBeInTheDocument()
+    const rows = within(drawer).getAllByRole('row')
+    const row = (name: string) => rows.find((item) => within(item).queryByText(name))!
+    expect(within(row('Boutique Centre')).getByText('Disponible')).toBeInTheDocument()
+    expect(within(row('Boutique Marché')).getByText('Stock bas')).toBeInTheDocument()
+    expect(within(row('Dépôt')).getByText('Rupture')).toBeInTheDocument()
+    // 12 × 12 000 + 3 × 12 500 = 181 500
+    expect(within(row('Boutique Centre')).getByText('144 000 FCFA')).toBeInTheDocument()
+    const total = row('Total')
+    expect(within(total).getByText(/15\s*pce/)).toBeInTheDocument()
+    expect(within(total).getByText('181 500 FCFA')).toBeInTheDocument()
+    expect(within(drawer).getByRole('link', { name: /Voir les mouvements de ce produit/ })).toHaveAttribute('href', expect.stringContaining('productId=p-rice'))
+  })
+
+  it('sans accès aux coûts : ni coût moyen ni valeur', async () => {
+    mockCatalogApi()
+    server.use(stockHandler(false))
+    const { user } = renderApp('/products', { session: meResponse({ permissions: ['products.view', 'stock.view'] }) })
+
+    await user.click(await screen.findByRole('button', { name: 'Stock de Riz parfumé 25 kg par boutique' }))
+
+    const drawer = (await screen.findByText('Stock par boutique — Riz parfumé 25 kg', { selector: '.ant-drawer-title' })).closest('[role="dialog"]') as HTMLElement
+    expect(await within(drawer).findByText('Boutique Centre')).toBeInTheDocument()
+    expect(within(drawer).queryByText('Coût moyen')).not.toBeInTheDocument()
+    expect(within(drawer).queryByText('Valeur')).not.toBeInTheDocument()
+  })
+
+  it('sans stock.view : pas de bouton de stock', async () => {
+    mockCatalogApi()
+    renderApp('/products', { session: meResponse({ permissions: ['products.view'] }) })
+
+    await screen.findByText('Riz parfumé 25 kg')
+    expect(screen.queryByRole('button', { name: /par boutique/ })).not.toBeInTheDocument()
   })
 })

@@ -48,6 +48,7 @@ export const queryKeys = {
     all: ['stock'] as const,
     levels: (query: object) => ['stock', 'levels', query] as const,
     alerts: (shopId?: string) => ['stock', 'alerts', shopId ?? 'all'] as const,
+    product: (productId: string) => ['stock', 'product', productId] as const,
     movements: (query: object) => ['stock', 'movements', query] as const,
     adjustments: (query: object) => ['stock', 'adjustments', query] as const,
     adjustment: (id: string) => ['stock', 'adjustment', id] as const,

@@ -3,6 +3,7 @@ import type {
   CreateAdjustmentInput,
   CreateTransferInput,
   InventoryCount,
+  ProductStock,
   MovementType,
   StockAdjustment,
   StockAlert,
@@ -27,6 +28,11 @@ export function listStockLevels(query: Page & { shopId?: string; search?: string
 
 export function listStockAlerts(shopId?: string) {
   return api<{ alerts: StockAlert[] }>('/stock/alerts', { params: { shopId } })
+}
+
+/** Stock d'un produit dans chaque boutique visible par l'utilisateur. */
+export function getProductStock(productId: string) {
+  return api<ProductStock>(`/stock/products/${productId}`)
 }
 
 export function listMovements(query: Page & { shopId?: string; productId?: string; type?: MovementType }) {

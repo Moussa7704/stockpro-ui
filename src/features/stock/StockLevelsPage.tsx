@@ -9,13 +9,12 @@ import { getErrorMessage } from '../../services/api'
 import type { StockAlert, StockLevel } from '../../types/stock'
 import { formatQuantity } from '../../utils/format'
 import { useStockAlerts, useStockLevels } from './queries'
+import { movementsLink } from './links'
 import { ShopFilter } from './ShopFilter'
 import { StockAlertStatusTag } from './StockAlertStatusTag'
 
 const PAGE_SIZE = 20
 
-const movementsLink = (productId: string, productName: string) =>
-  `/stock/movements?${new URLSearchParams({ productId, produit: productName }).toString()}`
 
 /**
  * Alertes : ruptures en tête (y compris un produit sans seuil déjà stocké), puis les produits au

@@ -18,6 +18,19 @@ export interface StockLevel {
   stockValue?: string
 }
 
+// GET /api/stock/products/:id : stock d'un produit dans chaque boutique visible
+export interface ProductShopStock {
+  shop: { id: string; code: string; name: string }
+  quantity: string
+  // Présent seulement pour ceux qui voient les coûts (reports.view ou stock.adjust)
+  averageCost?: string
+}
+
+export interface ProductStock {
+  product: ProductRef
+  stock: ProductShopStock[]
+}
+
 // GET /api/stock/alerts : ruptures en tête, puis stock au niveau ou sous le seuil
 export type StockAlertStatus = 'out_of_stock' | 'low_stock'
 
