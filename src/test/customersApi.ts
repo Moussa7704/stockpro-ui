@@ -1,5 +1,5 @@
 import { http as mock, HttpResponse } from 'msw'
-import type { Customer, CustomerDetail, Expense, ExpenseCategory } from '../types/customers'
+import type { Customer, CustomerDetail, CustomerPayment, Expense, ExpenseCategory } from '../types/customers'
 import { cashMethod, mobileMethod } from './posApi'
 import { server } from './server'
 
@@ -34,6 +34,7 @@ export function mockCustomersApi(options: { sessionOpen?: boolean } = {}) {
       { id: 'cat-power', name: 'Électricité et eau', archivedAt: null },
     ] as ExpenseCategory[],
     expenses: [] as Expense[],
+    payments: [] as (CustomerPayment & { customerId: string })[],
     requests: [] as { method: string; path: string; search: string; body: unknown; idempotencyKey: string | null }[],
   }
   const record = async (request: Request) => {
@@ -88,13 +89,31 @@ export function mockCustomersApi(options: { sessionOpen?: boolean } = {}) {
         },
       })
     }),
-    mock.get('/api/customers/:id/payments', () => HttpResponse.json(page([]))),
+    mock.get('/api/customers/:id/payments', ({ params }) => HttpResponse.json(page(db.payments.filter((payment) => payment.customerId === params.id)))),
+    // Reçu : le règlement avec la dette ACTUELLE du client
+    mock.get('/api/customers/payments/:id', ({ params }) => {
+      const payment = db.payments.find((item) => item.id === params.id)
+      if (!payment) return HttpResponse.json({ error: { message: 'Règlement introuvable' } }, { status: 404 })
+      return HttpResponse.json({ payment: { ...payment, customerBalance: db.customers.find((item) => item.id === payment.customerId)!.balance } })
+    }),
     mock.post('/api/customers/:id/payments', async ({ request, params }) => {
       await record(request)
-      const body = (await request.json()) as { amount: string }
+      const body = (await request.json()) as { amount: string; shopId: string; paymentMethodId: string; reference: string | null }
       const customer = db.customers.find((item) => item.id === params.id)!
       customer.balance = (Number(customer.balance) - Number(body.amount)).toFixed(2)
-      return HttpResponse.json({ payment: { id: 'cp-1', amount: body.amount, reference: null, cashSessionId: null, createdAt: now(), customerBalance: customer.balance } }, { status: 201 })
+      const method = [cashMethod, mobileMethod].find((item) => item.id === body.paymentMethodId)
+      const payment = {
+        id: `9f3c2a1b-0000-4000-8000-00000000000${db.payments.length + 1}`,
+        customerId: customer.id,
+        shopId: body.shopId,
+        amount: body.amount,
+        reference: body.reference,
+        cashSessionId: null,
+        createdAt: now(),
+        ...(method && { paymentMethod: { id: method.id, code: method.code, name: method.name, type: method.type } }),
+      }
+      db.payments.unshift(payment)
+      return HttpResponse.json({ payment: { ...payment, customerBalance: customer.balance } }, { status: 201 })
     }),
     // --- Dépenses
     mock.get('/api/expenses/categories', () => HttpResponse.json({ categories: db.categories })),

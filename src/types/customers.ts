@@ -60,12 +60,13 @@ export interface Statement {
 
 export interface CustomerPayment {
   id: string
+  shopId: string
   amount: string
   reference: string | null
   cashSessionId: string | null
   createdAt: string
   paymentMethod?: { id: string; code: string; name: string; type: string }
-  customerBalance?: string // solde du client après le règlement
+  customerBalance?: string // dette du client au moment de la réponse (juste après un encaissement : celle qui reste)
 }
 
 export interface CustomerPaymentInput {

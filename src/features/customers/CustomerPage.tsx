@@ -15,6 +15,7 @@ import { formatDate, formatDateTime, formatMoney } from '../../utils/format'
 import { printTable } from '../../utils/print'
 import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerPaymentModal } from './CustomerPaymentModal'
+import { PaymentReceiptModal } from './PaymentReceiptModal'
 
 const PAGE_SIZE = 20
 
@@ -128,7 +129,7 @@ function StatementTab({ customer }: { customer: CustomerDetail }) {
   )
 }
 
-function PaymentsTab({ customerId }: { customerId: string }) {
+function PaymentsTab({ customerId, onReceipt }: { customerId: string; onReceipt: (paymentId: string) => void }) {
   const [page, setPage] = useState(1)
   const query = { page, pageSize: PAGE_SIZE }
   const { data, isFetching } = useQuery({
@@ -149,6 +150,16 @@ function PaymentsTab({ customerId }: { customerId: string }) {
         { title: 'Moyen', key: 'method', render: (_, payment) => payment.paymentMethod?.name ?? '—' },
         { title: 'Référence', dataIndex: 'reference', render: (value: string | null) => value ?? '—' },
         { title: 'Montant', dataIndex: 'amount', align: 'right', render: (value: string) => <Money value={value} /> },
+        {
+          title: '',
+          key: 'receipt',
+          width: 90,
+          render: (_, payment) => (
+            <Button size="small" icon={<PrinterOutlined />} onClick={() => onReceipt(payment.id)} aria-label={`Reçu du règlement du ${formatDateTime(payment.createdAt)}`}>
+              Reçu
+            </Button>
+          ),
+        },
       ]}
     />
   )
@@ -162,6 +173,8 @@ export function CustomerPage() {
   const canCollect = usePermission('customer_payments.manage')
   const [editing, setEditing] = useState(false)
   const [paying, setPaying] = useState(false)
+  // Reçu affiché : juste après un encaissement, ou réimprimé depuis l'onglet Règlements
+  const [receipt, setReceipt] = useState<{ paymentId: string; justPaid: boolean } | null>(null)
   const { data: customer, error } = useQuery({
     queryKey: queryKeys.customers.detail(id),
     queryFn: async () => (await customersService.getCustomer(id)).customer,
@@ -244,7 +257,7 @@ export function CustomerPage() {
                 />
               ),
             },
-            { key: 'payments', label: 'Règlements', children: <PaymentsTab customerId={customer.id} /> },
+            { key: 'payments', label: 'Règlements', children: <PaymentsTab customerId={customer.id} onReceipt={(paymentId) => setReceipt({ paymentId, justPaid: false })} /> },
           ]}
         />
       </Card>
@@ -269,9 +282,12 @@ export function CustomerPage() {
             void queryClient.invalidateQueries({ queryKey: queryKeys.pos.all })
             setPaying(false)
             message.success(`Règlement encaissé : nouvelle dette ${formatMoney(payment.customerBalance ?? '0')}`)
+            // Le client repart avec son reçu
+            setReceipt({ paymentId: payment.id, justPaid: true })
           }}
         />
       )}
+      {receipt && <PaymentReceiptModal paymentId={receipt.paymentId} customerName={customer.name} justPaid={receipt.justPaid} onClose={() => setReceipt(null)} />}
     </div>
   )
 }
