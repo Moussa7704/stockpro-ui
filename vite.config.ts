@@ -8,26 +8,20 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // Chaque écran est déjà un fichier à part (routes/lazyPage.ts). On regroupe en plus les
-        // bibliothèques qui changent rarement, sous des noms stables : le navigateur les garde en
-        // cache d'une version de l'application à l'autre. antd reste découpé par composant
-        // (tableau, calendrier… ne viennent qu'avec les écrans qui s'en servent).
+        // Chaque écran est déjà un fichier à part (routes/lazyPage.ts), et le découpage automatique
+        // garde les graphiques et les composants lourds d'antd (tableau, calendrier…) avec les écrans
+        // qui s'en servent. On isole seulement React, qui ne change presque jamais : le navigateur le
+        // garde en cache d'une version de l'application à l'autre.
+        //
+        // Ne PAS désactiver includeDependenciesRecursively ni regrouper des bibliothèques partagées :
+        // l'ordre d'exécution entre fichiers devient invalide (« O is not a function » sur les graphiques).
+        // Après tout changement ici : construire puis charger chaque fichier dans un navigateur.
         codeSplitting: {
-          // Un groupe ne prend QUE les modules qu'il désigne : sinon il avale aussi leurs
-          // dépendances partagées (utilitaires communs avec antd) et devient nécessaire partout
-          includeDependenciesRecursively: false,
           groups: [
             {
               name: 'vendor-react',
               test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
               priority: 20,
-            },
-            // Graphiques : seulement pour le tableau de bord et les rapports. Uniquement les modules
-            // propres aux graphiques : un utilitaire partagé ici ferait charger tout le groupe au départ
-            {
-              name: 'vendor-charts',
-              test: /[\\/]node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor)[\\/]/,
-              priority: 10,
             },
           ],
         },
