@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { meResponse } from '../../test/fixtures'
 import { cashMethod, mockPosApi, seedSale } from '../../test/posApi'
 import { renderApp } from '../../test/render'
@@ -143,6 +143,50 @@ describe('Caisse : vente', () => {
 
     expect(await screen.findByText(/au-delà de 10 %, l’accord d’un gérant est nécessaire/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Encaisser/ })).toBeDisabled()
+  })
+})
+
+describe('Caisse : son de vente', () => {
+  // jsdom ne joue pas de son : on vérifie seulement que la lecture est demandée
+  const playSpy = () => vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+  afterEach(() => vi.restoreAllMocks())
+
+  async function sell(user: ReturnType<typeof renderApp>['user']) {
+    await scan(user, 'RIZ-25')
+    await user.click(await screen.findByRole('button', { name: /Encaisser/ }))
+    const modal = await screen.findByRole('dialog')
+    await user.click(within(modal).getByRole('button', { name: 'Valider la vente' }))
+    return modal
+  }
+
+  it('le son des pièces part quand le serveur confirme la vente, jamais pour une vente non confirmée', async () => {
+    const play = playSpy()
+    setup({ failFirstSale: true })
+    const { user } = renderApp('/pos', { session: cashier })
+
+    const modal = await sell(user)
+    expect(await within(modal).findByText(/Vente non confirmée/)).toBeInTheDocument()
+    expect(play).not.toHaveBeenCalled()
+
+    await user.click(within(modal).getByRole('button', { name: 'Valider la vente' }))
+    expect(await screen.findByText(/Ticket BTQ1-T-2026-000001/, { selector: 'pre' })).toBeInTheDocument()
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
+  it('son coupé sur cet appareil : aucune lecture, et le réglage est gardé', async () => {
+    const play = playSpy()
+    setup()
+    const { user } = renderApp('/pos', { session: cashier })
+
+    const toggle = await screen.findByRole('button', { name: 'Son des ventes' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(localStorage.getItem('stockpro:pos-sale-sound')).toBe('off')
+
+    await sell(user)
+    expect(await screen.findByText(/Ticket BTQ1-T-2026-000001/, { selector: 'pre' })).toBeInTheDocument()
+    expect(play).not.toHaveBeenCalled()
   })
 })
 
