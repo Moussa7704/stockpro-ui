@@ -3,11 +3,16 @@ import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom'
 import { createQueryClient } from '../lib/queryClient'
+import { preloadAllPages } from '../routes/lazyPage'
 import { routes } from '../routes/router'
 import { makeStore, type RootState } from '../store'
 import type { MeResponse } from '../types/auth'
 import { meResponse } from './fixtures'
 import { Providers } from './Providers'
+
+// Écrans chargés à la demande dans l'application : en test, on les charge tous avant le premier
+// test (comme avant le découpage), sinon leur compilation compterait dans les délais d'attente
+await preloadAllPages()
 
 interface RenderOptions {
   /** Session ouverte (par défaut : propriétaire de "Commerce 1") ; null = visiteur non connecté */

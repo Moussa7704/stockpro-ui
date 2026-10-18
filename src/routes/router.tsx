@@ -1,42 +1,46 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom'
-import { AccountPage } from '../features/account/AccountPage'
-import { AuditLogPage } from '../features/audit/AuditLogPage'
-import { CategoriesPage } from '../features/catalog/CategoriesPage'
-import { ProductsPage } from '../features/catalog/ProductsPage'
-import { SuppliersPage } from '../features/catalog/SuppliersPage'
-import { UnitsPage } from '../features/catalog/UnitsPage'
-import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage'
-import { LoginPage } from '../features/auth/LoginPage'
-import { ResetPasswordPage } from '../features/auth/ResetPasswordPage'
-import { SelectCompanyPage } from '../features/auth/SelectCompanyPage'
-import { VerifyOtpPage } from '../features/auth/VerifyOtpPage'
-import { DashboardPage } from '../features/dashboard/DashboardPage'
-import { MembersPage } from '../features/members/MembersPage'
-import { CustomerPage } from '../features/customers/CustomerPage'
-import { CustomersPage } from '../features/customers/CustomersPage'
-import { DebtorsPage } from '../features/customers/DebtorsPage'
-import { ExpensesPage } from '../features/expenses/ExpensesPage'
-import { PosPage } from '../features/pos/PosPage'
-import { SalesPage } from '../features/pos/SalesPage'
-import { InvoicesPage } from '../features/purchases/InvoicesPage'
-import { OrdersPage } from '../features/purchases/OrdersPage'
-import { ReceiptsPage } from '../features/purchases/ReceiptsPage'
-import { ReturnsPage } from '../features/purchases/ReturnsPage'
-import { ReportsPage } from '../features/reports/ReportsPage'
-import { RolesPage } from '../features/roles/RolesPage'
-import { SettingsPage } from '../features/settings/SettingsPage'
-import { AdjustmentsPage } from '../features/stock/AdjustmentsPage'
-import { InventoriesPage } from '../features/stock/InventoriesPage'
-import { InventoryPage } from '../features/stock/InventoryPage'
-import { MovementsPage } from '../features/stock/MovementsPage'
-import { StockLevelsPage } from '../features/stock/StockLevelsPage'
-import { TransfersPage } from '../features/stock/TransfersPage'
 import { AppLayout } from '../layouts/AppLayout'
 import { AuthLayout } from '../layouts/AuthLayout'
 import { PlatformLayout } from '../layouts/PlatformLayout'
-import { PlatformCompaniesPage } from '../features/platform/PlatformCompaniesPage'
-import { PlatformCompanyPage } from '../features/platform/PlatformCompanyPage'
 import { CompanyRoute, PermissionRoute, PlatformRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
+import { lazyPage } from './lazyPage'
+
+// Un fichier par écran, téléchargé à sa première ouverture (layouts et gardes restent dans le
+// fichier principal : en-tête et menu s'affichent tout de suite)
+const AccountPage = lazyPage(() => import('../features/account/AccountPage'), 'AccountPage')
+const AuditLogPage = lazyPage(() => import('../features/audit/AuditLogPage'), 'AuditLogPage')
+const CategoriesPage = lazyPage(() => import('../features/catalog/CategoriesPage'), 'CategoriesPage')
+const ProductsPage = lazyPage(() => import('../features/catalog/ProductsPage'), 'ProductsPage')
+const SuppliersPage = lazyPage(() => import('../features/catalog/SuppliersPage'), 'SuppliersPage')
+const UnitsPage = lazyPage(() => import('../features/catalog/UnitsPage'), 'UnitsPage')
+const ForgotPasswordPage = lazyPage(() => import('../features/auth/ForgotPasswordPage'), 'ForgotPasswordPage')
+const LoginPage = lazyPage(() => import('../features/auth/LoginPage'), 'LoginPage')
+const ResetPasswordPage = lazyPage(() => import('../features/auth/ResetPasswordPage'), 'ResetPasswordPage')
+const SelectCompanyPage = lazyPage(() => import('../features/auth/SelectCompanyPage'), 'SelectCompanyPage')
+const VerifyOtpPage = lazyPage(() => import('../features/auth/VerifyOtpPage'), 'VerifyOtpPage')
+const DashboardPage = lazyPage(() => import('../features/dashboard/DashboardPage'), 'DashboardPage')
+const MembersPage = lazyPage(() => import('../features/members/MembersPage'), 'MembersPage')
+const CustomerPage = lazyPage(() => import('../features/customers/CustomerPage'), 'CustomerPage')
+const CustomersPage = lazyPage(() => import('../features/customers/CustomersPage'), 'CustomersPage')
+const DebtorsPage = lazyPage(() => import('../features/customers/DebtorsPage'), 'DebtorsPage')
+const ExpensesPage = lazyPage(() => import('../features/expenses/ExpensesPage'), 'ExpensesPage')
+const PosPage = lazyPage(() => import('../features/pos/PosPage'), 'PosPage')
+const SalesPage = lazyPage(() => import('../features/pos/SalesPage'), 'SalesPage')
+const InvoicesPage = lazyPage(() => import('../features/purchases/InvoicesPage'), 'InvoicesPage')
+const OrdersPage = lazyPage(() => import('../features/purchases/OrdersPage'), 'OrdersPage')
+const ReceiptsPage = lazyPage(() => import('../features/purchases/ReceiptsPage'), 'ReceiptsPage')
+const ReturnsPage = lazyPage(() => import('../features/purchases/ReturnsPage'), 'ReturnsPage')
+const ReportsPage = lazyPage(() => import('../features/reports/ReportsPage'), 'ReportsPage')
+const RolesPage = lazyPage(() => import('../features/roles/RolesPage'), 'RolesPage')
+const SettingsPage = lazyPage(() => import('../features/settings/SettingsPage'), 'SettingsPage')
+const AdjustmentsPage = lazyPage(() => import('../features/stock/AdjustmentsPage'), 'AdjustmentsPage')
+const InventoriesPage = lazyPage(() => import('../features/stock/InventoriesPage'), 'InventoriesPage')
+const InventoryPage = lazyPage(() => import('../features/stock/InventoryPage'), 'InventoryPage')
+const MovementsPage = lazyPage(() => import('../features/stock/MovementsPage'), 'MovementsPage')
+const StockLevelsPage = lazyPage(() => import('../features/stock/StockLevelsPage'), 'StockLevelsPage')
+const TransfersPage = lazyPage(() => import('../features/stock/TransfersPage'), 'TransfersPage')
+const PlatformCompaniesPage = lazyPage(() => import('../features/platform/PlatformCompaniesPage'), 'PlatformCompaniesPage')
+const PlatformCompanyPage = lazyPage(() => import('../features/platform/PlatformCompanyPage'), 'PlatformCompanyPage')
 
 // Exportées seules : les tests les montent dans un routeur en mémoire (createMemoryRouter)
 export const routes: RouteObject[] = [

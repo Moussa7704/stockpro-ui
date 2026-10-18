@@ -3,6 +3,7 @@ import { App, Avatar, Button, Dropdown, Layout, Tag } from 'antd'
 import type { MenuProps } from 'antd'
 import { useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { PageSuspense } from '../components/PageSuspense'
 import { useAuth } from '../hook/useAuth'
 import { getErrorMessage } from '../services/api'
 
@@ -55,7 +56,9 @@ export function PlatformLayout() {
         </Dropdown>
       </Header>
       <Content ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-6">
-        <Outlet />
+        <PageSuspense>
+          <Outlet />
+        </PageSuspense>
       </Content>
     </Layout>
   )

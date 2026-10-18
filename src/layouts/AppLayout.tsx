@@ -35,6 +35,7 @@ import type { MenuProps } from 'antd'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useActiveShop } from '../hook/useActiveShop'
+import { PageSuspense } from '../components/PageSuspense'
 import { useAuth } from '../hook/useAuth'
 import { getErrorMessage } from '../services/api'
 import type { Permission } from '../types/access'
@@ -241,7 +242,9 @@ export function AppLayout() {
           </Dropdown>
         </Header>
         <Content ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-6">
-          <Outlet />
+          <PageSuspense>
+            <Outlet />
+          </PageSuspense>
         </Content>
       </Layout>
     </Layout>

@@ -26,7 +26,7 @@ describe('Connexion de bout en bout', () => {
     )
     const { user, router } = renderApp('/login', { session: null })
 
-    await user.type(screen.getByLabelText('Email'), 'awa@test.com')
+    await user.type(await screen.findByLabelText('Email'), 'awa@test.com')
     await user.type(screen.getByLabelText('Mot de passe'), 'MotDePasse!2026')
     await user.click(screen.getByRole('button', { name: /se connecter/i }))
 
@@ -48,7 +48,7 @@ describe('Connexion de bout en bout', () => {
     )
     const { user, router } = renderApp('/login', { session: null })
 
-    await user.type(screen.getByLabelText('Email'), 'awa@test.com')
+    await user.type(await screen.findByLabelText('Email'), 'awa@test.com')
     await user.type(screen.getByLabelText('Mot de passe'), 'faux')
     await user.click(screen.getByRole('button', { name: /se connecter/i }))
 
