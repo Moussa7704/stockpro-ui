@@ -60,7 +60,7 @@ describe('Niveaux de stock', () => {
     await user.click(await screen.findByRole('link', { name: 'Mouvements de Riz parfumé 25 kg' }))
 
     expect(await screen.findByText('Produit : Riz parfumé 25 kg')).toBeInTheDocument()
-    expect(lastRequest('GET', '/api/stock/movements')?.search).toContain('productId=p-rice')
+    await waitFor(() => expect(lastRequest('GET', '/api/stock/movements')?.search).toContain('productId=p-rice'))
     expect(await screen.findByText('−2')).toHaveClass('text-red-600')
     expect(screen.getByText('+5')).toHaveClass('text-green-700')
     expect(screen.getByText('Vente')).toBeInTheDocument()

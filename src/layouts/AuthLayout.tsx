@@ -1,5 +1,6 @@
 import { Card } from 'antd'
 import { Outlet } from 'react-router-dom'
+import { PageSuspense } from '../components/PageSuspense'
 
 export function AuthLayout() {
   return (
@@ -7,7 +8,9 @@ export function AuthLayout() {
       <div className="w-full max-w-md">
         <p className="mb-6 text-center text-2xl font-bold tracking-tight text-brand">StockPro</p>
         <Card className="shadow-lg">
-          <Outlet />
+          <PageSuspense>
+            <Outlet />
+          </PageSuspense>
         </Card>
       </div>
     </main>
