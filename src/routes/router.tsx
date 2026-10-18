@@ -4,6 +4,7 @@ import { AuthLayout } from '../layouts/AuthLayout'
 import { PlatformLayout } from '../layouts/PlatformLayout'
 import { CompanyRoute, PermissionRoute, PlatformRoute, ProtectedRoute, PublicOnlyRoute } from './ProtectedRoute'
 import { lazyPage } from './lazyPage'
+import { RouteError } from './RouteError'
 
 // Un fichier par écran, téléchargé à sa première ouverture (layouts et gardes restent dans le
 // fichier principal : en-tête et menu s'affichent tout de suite)
@@ -45,139 +46,146 @@ const PlatformCompanyPage = lazyPage(() => import('../features/platform/Platform
 // Exportées seules : les tests les montent dans un routeur en mémoire (createMemoryRouter)
 export const routes: RouteObject[] = [
   {
-    // Pas d'inscription publique : le propriétaire invite son équipe (page Équipe)
-    element: <PublicOnlyRoute />,
+    // Erreur dans n'importe quel écran (y compris un fichier d'écran introuvable après une mise à
+    // jour) : page claire en français au lieu de la page technique de React Router
+    errorElement: <RouteError />,
     children: [
       {
-        element: <AuthLayout />,
-        children: [
-          { path: '/login', element: <LoginPage /> },
-          { path: '/verify-otp', element: <VerifyOtpPage /> },
-          { path: '/forgot-password', element: <ForgotPasswordPage /> },
-        ],
-      },
-    ],
-  },
-  {
-    // Lien reçu par email : accessible même connecté (ex. un admin qui teste une invitation)
-    element: <AuthLayout />,
-    children: [{ path: '/reset-password', element: <ResetPasswordPage /> }],
-  },
-  {
-    element: <ProtectedRoute />,
-    children: [
-      {
-        // Membre de plusieurs entreprises : choix de l'entreprise active
-        element: <AuthLayout />,
-        children: [{ path: '/select-company', element: <SelectCompanyPage /> }],
-      },
-      {
-        // Back-office de la plateforme : hors entreprise (un super-admin peut n'être membre de rien)
-        element: <PlatformRoute />,
+        // Pas d'inscription publique : le propriétaire invite son équipe (page Équipe)
+        element: <PublicOnlyRoute />,
         children: [
           {
-            element: <PlatformLayout />,
+            element: <AuthLayout />,
             children: [
-              { path: '/platform', element: <PlatformCompaniesPage /> },
-              { path: '/platform/companies/:id', element: <PlatformCompanyPage /> },
+              { path: '/login', element: <LoginPage /> },
+              { path: '/verify-otp', element: <VerifyOtpPage /> },
+              { path: '/forgot-password', element: <ForgotPasswordPage /> },
             ],
           },
         ],
       },
       {
-        element: <CompanyRoute />,
+        // Lien reçu par email : accessible même connecté (ex. un admin qui teste une invitation)
+        element: <AuthLayout />,
+        children: [{ path: '/reset-password', element: <ResetPasswordPage /> }],
+      },
+      {
+        element: <ProtectedRoute />,
         children: [
           {
-            element: <AppLayout />,
+            // Membre de plusieurs entreprises : choix de l'entreprise active
+            element: <AuthLayout />,
+            children: [{ path: '/select-company', element: <SelectCompanyPage /> }],
+          },
+          {
+            // Back-office de la plateforme : hors entreprise (un super-admin peut n'être membre de rien)
+            element: <PlatformRoute />,
             children: [
-              { path: '/', element: <DashboardPage /> },
-              { path: '/account', element: <AccountPage /> },
-              // Catalogue : unités et catégories lisibles par tout membre, produits et fournisseurs avec products.view
-              { path: '/units', element: <UnitsPage /> },
-              { path: '/categories', element: <CategoriesPage /> },
               {
-                element: <PermissionRoute permission="products.view" />,
+                element: <PlatformLayout />,
                 children: [
-                  { path: '/products', element: <ProductsPage /> },
-                  { path: '/suppliers', element: <SuppliersPage /> },
+                  { path: '/platform', element: <PlatformCompaniesPage /> },
+                  { path: '/platform/companies/:id', element: <PlatformCompanyPage /> },
                 ],
               },
-              // Stock : consultation avec stock.view (les actions sont réservées dans chaque écran)
+            ],
+          },
+          {
+            element: <CompanyRoute />,
+            children: [
               {
-                element: <PermissionRoute permission="stock.view" />,
+                element: <AppLayout />,
                 children: [
-                  { path: '/stock', element: <StockLevelsPage /> },
-                  { path: '/stock/movements', element: <MovementsPage /> },
-                  { path: '/stock/adjustments', element: <AdjustmentsPage /> },
-                  { path: '/stock/transfers', element: <TransfersPage /> },
-                  { path: '/stock/inventories', element: <InventoriesPage /> },
-                  { path: '/stock/inventories/:id', element: <InventoryPage /> },
+                  { path: '/', element: <DashboardPage /> },
+                  { path: '/account', element: <AccountPage /> },
+                  // Catalogue : unités et catégories lisibles par tout membre, produits et fournisseurs avec products.view
+                  { path: '/units', element: <UnitsPage /> },
+                  { path: '/categories', element: <CategoriesPage /> },
+                  {
+                    element: <PermissionRoute permission="products.view" />,
+                    children: [
+                      { path: '/products', element: <ProductsPage /> },
+                      { path: '/suppliers', element: <SuppliersPage /> },
+                    ],
+                  },
+                  // Stock : consultation avec stock.view (les actions sont réservées dans chaque écran)
+                  {
+                    element: <PermissionRoute permission="stock.view" />,
+                    children: [
+                      { path: '/stock', element: <StockLevelsPage /> },
+                      { path: '/stock/movements', element: <MovementsPage /> },
+                      { path: '/stock/adjustments', element: <AdjustmentsPage /> },
+                      { path: '/stock/transfers', element: <TransfersPage /> },
+                      { path: '/stock/inventories', element: <InventoriesPage /> },
+                      { path: '/stock/inventories/:id', element: <InventoryPage /> },
+                    ],
+                  },
+                  // Caisse : vendre (sales.create) dans une session ouverte (cash_sessions.manage)
+                  {
+                    element: <PermissionRoute permission="sales.create" />,
+                    children: [
+                      { path: '/pos', element: <PosPage /> },
+                      { path: '/pos/sales', element: <SalesPage /> },
+                    ],
+                  },
+                  // Clients et finances
+                  {
+                    element: <PermissionRoute permission="customers.manage" />,
+                    children: [
+                      { path: '/customers', element: <CustomersPage /> },
+                      { path: '/customers/:id', element: <CustomerPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="reports.view" />,
+                    children: [
+                      { path: '/debtors', element: <DebtorsPage /> },
+                      { path: '/reports', element: <ReportsPage /> },
+                    ],
+                  },
+                  {
+                    element: <PermissionRoute permission="expenses.manage" />,
+                    children: [{ path: '/expenses', element: <ExpensesPage /> }],
+                  },
+                  // Achats : commandes, réceptions et retours avec purchases.manage
+                  {
+                    element: <PermissionRoute permission="purchases.manage" />,
+                    children: [
+                      { path: '/purchases/orders', element: <OrdersPage /> },
+                      { path: '/purchases/receipts', element: <ReceiptsPage /> },
+                      { path: '/purchases/returns', element: <ReturnsPage /> },
+                    ],
+                  },
+                  // Factures et paiements fournisseurs : supplier_payments.manage (comptable, gérant…)
+                  {
+                    element: <PermissionRoute permission="supplier_payments.manage" />,
+                    children: [{ path: '/purchases/invoices', element: <InvoicesPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="users.manage" />,
+                    children: [{ path: '/members', element: <MembersPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="roles.manage" />,
+                    children: [{ path: '/roles', element: <RolesPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="company.manage" />,
+                    children: [{ path: '/settings', element: <SettingsPage /> }],
+                  },
+                  {
+                    element: <PermissionRoute permission="audit.view" />,
+                    children: [{ path: '/audit', element: <AuditLogPage /> }],
+                  },
                 ],
-              },
-              // Caisse : vendre (sales.create) dans une session ouverte (cash_sessions.manage)
-              {
-                element: <PermissionRoute permission="sales.create" />,
-                children: [
-                  { path: '/pos', element: <PosPage /> },
-                  { path: '/pos/sales', element: <SalesPage /> },
-                ],
-              },
-              // Clients et finances
-              {
-                element: <PermissionRoute permission="customers.manage" />,
-                children: [
-                  { path: '/customers', element: <CustomersPage /> },
-                  { path: '/customers/:id', element: <CustomerPage /> },
-                ],
-              },
-              {
-                element: <PermissionRoute permission="reports.view" />,
-                children: [
-                  { path: '/debtors', element: <DebtorsPage /> },
-                  { path: '/reports', element: <ReportsPage /> },
-                ],
-              },
-              {
-                element: <PermissionRoute permission="expenses.manage" />,
-                children: [{ path: '/expenses', element: <ExpensesPage /> }],
-              },
-              // Achats : commandes, réceptions et retours avec purchases.manage
-              {
-                element: <PermissionRoute permission="purchases.manage" />,
-                children: [
-                  { path: '/purchases/orders', element: <OrdersPage /> },
-                  { path: '/purchases/receipts', element: <ReceiptsPage /> },
-                  { path: '/purchases/returns', element: <ReturnsPage /> },
-                ],
-              },
-              // Factures et paiements fournisseurs : supplier_payments.manage (comptable, gérant…)
-              {
-                element: <PermissionRoute permission="supplier_payments.manage" />,
-                children: [{ path: '/purchases/invoices', element: <InvoicesPage /> }],
-              },
-              {
-                element: <PermissionRoute permission="users.manage" />,
-                children: [{ path: '/members', element: <MembersPage /> }],
-              },
-              {
-                element: <PermissionRoute permission="roles.manage" />,
-                children: [{ path: '/roles', element: <RolesPage /> }],
-              },
-              {
-                element: <PermissionRoute permission="company.manage" />,
-                children: [{ path: '/settings', element: <SettingsPage /> }],
-              },
-              {
-                element: <PermissionRoute permission="audit.view" />,
-                children: [{ path: '/audit', element: <AuditLogPage /> }],
               },
             ],
           },
         ],
       },
+      { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
-  { path: '*', element: <Navigate to="/" replace /> },
 ]
 
 export const router = createBrowserRouter(routes)
