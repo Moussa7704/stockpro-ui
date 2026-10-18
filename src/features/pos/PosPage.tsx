@@ -1,6 +1,6 @@
-import { DeleteOutlined, LockOutlined, ShoppingCartOutlined } from '@ant-design/icons'
+import { DeleteOutlined, LockOutlined, MutedOutlined, ShoppingCartOutlined, SoundOutlined } from '@ant-design/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Alert, App, Button, Card, Empty, Popconfirm, Skeleton, Table, Tag, Typography, type RefSelectProps } from 'antd'
+import { Alert, App, Button, Card, Empty, Popconfirm, Skeleton, Table, Tag, Tooltip, Typography, type RefSelectProps } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { AmountInput } from '../../components/AmountInput'
 import { Money } from '../../components/Money'
@@ -34,6 +34,7 @@ import { PaymentModal } from './PaymentModal'
 import { discountPercent, fromCents, priceCart } from './pricing'
 import { useCurrentSession } from './queries'
 import { CloseSessionModal, OpenSessionCard } from './SessionCards'
+import { isSaleSoundEnabled, playSaleSound, preloadSaleSound, setSaleSoundEnabled } from './saleSound'
 import { TicketModal } from './TicketModal'
 
 /**
@@ -60,6 +61,8 @@ export function PosPage() {
   const [paying, setPaying] = useState(false)
   const [ticketSaleId, setTicketSaleId] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
+  const [soundOn, setSoundOn] = useState(isSaleSoundEnabled)
+  useEffect(() => preloadSaleSound(), [])
 
   // Le panier appartient à une entreprise et une boutique : en changer repart d'un panier vide
   useEffect(() => {
@@ -101,6 +104,8 @@ export function PosPage() {
         cart.idempotencyKey,
       ),
     onSuccess: ({ sale: created }) => {
+      // Vente confirmée par le serveur : le son des pièces dans la caisse
+      playSaleSound()
       dispatch(cartCleared())
       setPaying(false)
       setTicketSaleId(created.id)
@@ -240,9 +245,22 @@ export function PosPage() {
             {activeShop.name} · ouverte le {formatDateTime(session.openedAt)}
           </Tag>
         </div>
-        <Button icon={<LockOutlined />} onClick={() => setClosing(true)}>
-          Clôturer la caisse
-        </Button>
+        <div className="flex items-center gap-2">
+          <Tooltip title={soundOn ? 'Couper le son des ventes' : 'Activer le son des ventes'}>
+            <Button
+              icon={soundOn ? <SoundOutlined /> : <MutedOutlined />}
+              aria-pressed={soundOn}
+              aria-label="Son des ventes"
+              onClick={() => {
+                setSaleSoundEnabled(!soundOn)
+                setSoundOn(!soundOn)
+              }}
+            />
+          </Tooltip>
+          <Button icon={<LockOutlined />} onClick={() => setClosing(true)}>
+            Clôturer la caisse
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
