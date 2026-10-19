@@ -1,4 +1,4 @@
-import { LockOutlined, MailOutlined } from '@ant-design/icons'
+import { LockOutlined, MailOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 import { Alert, Button, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -36,9 +36,12 @@ export function LoginPage() {
 
   return (
     <>
-      <Typography.Title level={3} className="mb-6">
+      <Typography.Title level={3} className="mb-1">
         Connexion
       </Typography.Title>
+      <Typography.Paragraph type="secondary" className="mb-6">
+        Bienvenue ! Connectez-vous pour gérer votre boutique.
+      </Typography.Paragraph>
 
       <Form<CredentialsValues> layout="vertical" onFinish={handleCredentials} requiredMark={false}>
         <Form.Item
@@ -49,7 +52,7 @@ export function LoginPage() {
             { type: 'email', message: 'Email invalide' },
           ]}
         >
-          <Input prefix={<MailOutlined />} size="large" autoComplete="email" autoFocus />
+          <Input prefix={<MailOutlined />} size="large" autoComplete="email" placeholder="vous@exemple.com" autoFocus />
         </Form.Item>
 
         <Form.Item
@@ -71,7 +74,11 @@ export function LoginPage() {
         </Button>
       </Form>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <div className="mt-6 flex items-start gap-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+        <SafetyCertificateOutlined className="mt-0.5 text-base text-green-700" aria-hidden />
+        <span>Connexion protégée : un code vous est envoyé par email à chaque connexion.</span>
+      </div>
+      <p className="mt-4 mb-0 text-center text-sm text-slate-500">
         Pas encore de compte ? Demandez à un administrateur de vous inviter.
       </p>
     </>
