@@ -19,20 +19,21 @@ const fields: ImportAnalysis['fields'] = [
   { field: 'purchasePrice', label: "Prix d'achat", required: false },
   { field: 'alertThreshold', label: "Seuil d'alerte", required: false },
   { field: 'description', label: 'Description', required: false },
+  { field: 'quantity', label: 'Quantité en stock', required: false },
 ]
 
 // Fichier d'une boutique : « Montant » n'a pas été reconnu comme prix de vente
 const analysis: ImportAnalysis = {
   filename: 'stock.xlsx',
-  columns: ['Réf', 'Désignation', 'Famille', 'Montant'],
+  columns: ['Réf', 'Désignation', 'Famille', 'Montant', 'Qté'],
   rowCount: 3,
   sample: [
-    { line: 4, cells: ['R1', 'Riz 25 kg', 'Alimentation', '15000'] },
-    { line: 5, cells: ['', 'Savon', 'Hygiène', '500'] },
-    { line: 6, cells: ['', 'TOTAL', '', '15500'] },
+    { line: 4, cells: ['R1', 'Riz 25 kg', 'Alimentation', '15000', '12'] },
+    { line: 5, cells: ['', 'Savon', 'Hygiène', '500', '40'] },
+    { line: 6, cells: ['', 'TOTAL', '', '15500', '52'] },
   ],
   fields,
-  suggestedMapping: { sku: 'Réf', name: 'Désignation', category: 'Famille' },
+  suggestedMapping: { sku: 'Réf', name: 'Désignation', category: 'Famille', quantity: 'Qté' },
 }
 
 function report(overrides: Partial<ImportReport> = {}): ImportReport {
@@ -45,6 +46,7 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     skipped: 1,
     errors: 0,
     categoriesToCreate: ['Alimentation', 'Hygiène'],
+    stock: null,
     rows: [
       { line: 4, status: 'create', name: 'Riz 25 kg', sku: 'R1' },
       { line: 5, status: 'create', name: 'Savon', sku: 'ART-000001', generatedSku: true },
@@ -56,6 +58,7 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
 
 /** Fausse API d'import : garde chaque envoi (options décodées, nom du fichier, clé d'idempotence). */
 function mockImportApi(previews: ImportReport[]) {
+  let lastPreview: ImportReport | null = null
   const calls: { path: string; filename: string | undefined; options: Record<string, unknown> | null; idempotencyKey: string | null }[] = []
   const record = async (request: Request) => {
     const form = await request.formData()
@@ -77,8 +80,12 @@ function mockImportApi(previews: ImportReport[]) {
     }),
     mock.post('/api/products/import', async ({ request }) => {
       const call = await record(request)
-      if (call.options?.dryRun) return HttpResponse.json({ report: previews.shift() ?? report() })
-      return HttpResponse.json({ report: report({ dryRun: false, categoriesToCreate: ['Alimentation', 'Hygiène'] }) }, { status: 201 })
+      if (call.options?.dryRun) {
+        lastPreview = previews.shift() ?? report()
+        return HttpResponse.json({ report: lastPreview })
+      }
+      const stock = lastPreview?.stock ? { ...lastPreview.stock, adjustment: { id: 'adj-1', number: 'BTQ1-AJ-2026-000001' } } : null
+      return HttpResponse.json({ report: { ...(lastPreview ?? report()), dryRun: false, stock } }, { status: 201 })
     }),
   )
   return calls
@@ -99,6 +106,8 @@ describe('Import de produits', () => {
     // Correspondance proposée par le serveur ; le prix de vente manque encore
     expect(await screen.findByText('Colonnes de « stock.xlsx » (3 ligne(s))')).toBeInTheDocument()
     expect(screen.getByText('ex. : Riz 25 kg')).toBeInTheDocument()
+    // Sans stock.adjust : pas de quantité, même proposée par le serveur
+    expect(screen.queryByLabelText('Colonne pour Quantité en stock')).not.toBeInTheDocument()
     const checkButton = screen.getByRole('button', { name: 'Vérifier les 3 ligne(s)' })
     expect(checkButton).toBeDisabled()
 
@@ -127,7 +136,48 @@ describe('Import de produits', () => {
     expect(await screen.findByText('2 produit(s) importé(s)')).toBeInTheDocument()
     expect(screen.getByText(/catégories créées : Alimentation, Hygiène/)).toBeInTheDocument()
     expect(calls.at(-1)?.options).toMatchObject({ dryRun: false })
+    expect(calls.at(-1)?.options).not.toHaveProperty('shopId')
+    expect((calls.at(-1)?.options?.mapping as object)).not.toHaveProperty('quantity')
     expect(calls.at(-1)?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('stock de départ : boutique de travail proposée, quantités déjà en stock signalées, pièce créée', async () => {
+    mockCatalogApi()
+    const preview = report({
+      existing: 1,
+      toCreate: 1,
+      skipped: 1,
+      stock: { shop: { id: 'shop-1', code: 'BTQ1', name: 'Boutique Centre' }, lines: 1, alreadyStocked: 1, adjustment: null },
+      rows: [
+        { line: 4, status: 'existing', name: 'Riz 25 kg', sku: 'R1', quantity: '12', stock: 'already_stocked', messages: ['Déjà du stock dans cette boutique : quantité non importée (faites un inventaire)'] },
+        { line: 5, status: 'create', name: 'Savon', sku: 'ART-000001', generatedSku: true, quantity: '40', stock: 'opening' },
+        { line: 6, status: 'skipped', name: 'TOTAL', sku: null },
+      ],
+    })
+    const calls = mockImportApi([preview])
+    const { user } = renderApp('/products/import', {
+      session: meResponse({ permissions: ['products.view', 'products.manage', 'stock.adjust'] }),
+    })
+
+    await screen.findByText('Cliquez ou déposez votre fichier ici')
+    await user.upload(fileInput(), xlsx())
+    await user.click(await screen.findByLabelText('Colonne pour Prix de vente'))
+    await user.click(await screen.findByTitle('Montant'))
+
+    // « Qté » reconnue : la boutique de travail est proposée pour recevoir le stock
+    expect(screen.getByText('ex. : 12')).toBeInTheDocument()
+    expect(screen.getByLabelText('Boutique qui reçoit le stock')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Vérifier les 3 ligne(s)' }))
+
+    expect(await screen.findByText('Mis en stock dans Boutique Centre : 1')).toBeInTheDocument()
+    expect(screen.getByText('1 produit(s) ont déjà du stock dans « Boutique Centre » : leur quantité ne sera pas importée')).toBeInTheDocument()
+    expect(calls.at(-1)?.options).toMatchObject({ mapping: { quantity: 'Qté' }, shopId: 'shop-1', dryRun: true })
+
+    await user.click(screen.getByRole('button', { name: 'Importer 1 produit(s) et leur stock' }))
+
+    expect(await screen.findByText(/stock de départ de 1 produit\(s\) dans « Boutique Centre » \(pièce BTQ1-AJ-2026-000001\)/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Voir le stock' })).toBeInTheDocument()
+    expect(calls.at(-1)?.options).toMatchObject({ shopId: 'shop-1', dryRun: false })
   })
 
   it('lignes en erreur : import bloqué, fichier corrigé rechargé avec les mêmes colonnes', async () => {

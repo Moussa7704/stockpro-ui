@@ -102,7 +102,7 @@ export interface SupplierListQuery {
 }
 
 // --- Import de produits depuis le fichier du commerçant (.xlsx / .csv)
-export const IMPORT_FIELDS = ['name', 'sku', 'barcode', 'category', 'unit', 'salePrice', 'purchasePrice', 'alertThreshold', 'description'] as const
+export const IMPORT_FIELDS = ['name', 'sku', 'barcode', 'category', 'unit', 'salePrice', 'purchasePrice', 'alertThreshold', 'description', 'quantity'] as const
 export type ImportField = (typeof IMPORT_FIELDS)[number]
 /** Champ StockPro → nom de la colonne du fichier */
 export type ImportMapping = Partial<Record<ImportField, string>>
@@ -119,6 +119,8 @@ export interface ImportAnalysis {
 
 export interface ImportOptions {
   mapping: ImportMapping
+  /** Boutique qui reçoit le stock de départ (obligatoire si la quantité est importée) */
+  shopId?: string
   defaultUnitId?: string
   createCategories: boolean
   dryRun: boolean
@@ -132,6 +134,10 @@ export interface ImportRow {
   name: string
   sku: string | null
   generatedSku?: boolean
+  /** Quantité lue dans le fichier */
+  quantity?: string
+  /** opening : entre en stock d'ouverture ; already_stocked : déjà du stock dans la boutique, ignorée */
+  stock?: 'opening' | 'already_stocked'
   messages?: string[]
 }
 
@@ -146,5 +152,13 @@ export interface ImportReport {
   errors: number
   /** Aperçu : catégories qui seraient créées ; import : catégories créées */
   categoriesToCreate: string[]
+  /** Stock de départ (null si aucune colonne de quantité) */
+  stock: {
+    shop: { id: string; code: string; name: string }
+    lines: number
+    alreadyStocked: number
+    /** Pièce « stock d'ouverture » créée à l'import (null à l'aperçu) */
+    adjustment: { id: string; number: string } | null
+  } | null
   rows: ImportRow[]
 }

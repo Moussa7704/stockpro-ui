@@ -4,10 +4,14 @@ import { Alert, App, Button, Card, Checkbox, Result, Segmented, Select, Spin, St
 import type { TableColumnsType } from 'antd'
 import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useActiveShop } from '../../hook/useActiveShop'
+import { usePermission } from '../../hook/usePermission'
 import { queryKeys } from '../../lib/queryKeys'
 import { ApiError, getErrorMessage, newIdempotencyKey } from '../../services/api'
 import * as catalogService from '../../services/catalog.service'
+import type { ShopSummary } from '../../types/access'
 import type { ImportAnalysis, ImportField, ImportMapping, ImportReport, ImportRow, ImportRowStatus } from '../../types/catalog'
+import { formatQuantity } from '../../utils/format'
 import { useUnits } from './queries'
 
 // Mêmes limites que le serveur : on prévient avant d'envoyer
@@ -30,6 +34,17 @@ function reportOf(error: unknown): ImportReport | null {
   return details && typeof details === 'object' && 'rows' in details ? (details as ImportReport) : null
 }
 
+/** Ni produit à créer, ni stock à entrer : le bouton d'import n'a rien à faire. */
+function nothingToWrite(report: ImportReport): boolean {
+  return report.toCreate === 0 && !report.stock?.lines
+}
+
+function confirmLabel(report: ImportReport): string {
+  const lines = report.stock?.lines ?? 0
+  if (report.toCreate === 0) return `Mettre ${lines} produit(s) en stock`
+  return lines > 0 ? `Importer ${report.toCreate} produit(s) et leur stock` : `Importer ${report.toCreate} produit(s)`
+}
+
 /**
  * Correspondance pour un nouveau fichier : celle déjà choisie par l'utilisateur quand la colonne
  * existe encore (fichier corrigé puis rechargé), sinon celle proposée par le serveur.
@@ -43,11 +58,15 @@ function nextMapping(previous: ImportMapping, analysis: ImportAnalysis): ImportM
  * Assistant d'import du catalogue depuis le fichier que le commerçant a déjà (Excel ou CSV) :
  * il dépose son fichier tel quel, indique quelle colonne correspond à quoi, vérifie chaque ligne,
  * puis importe (tout ou rien). Les produits déjà enregistrés ne sont pas modifiés.
+ * Avec stock.adjust, la colonne des quantités devient le stock de départ d'une boutique
+ * (premier remplissage seulement : un produit déjà stocké dans cette boutique garde son stock).
  */
 export function ProductImportPage() {
   const { message } = App.useApp()
   const queryClient = useQueryClient()
   const { data: units = [] } = useUnits()
+  const canStock = usePermission('stock.adjust')
+  const { shops, activeShop } = useActiveShop()
 
   const [step, setStep] = useState<Step>('file')
   const [file, setFile] = useState<File | null>(null)
@@ -55,6 +74,7 @@ export function ProductImportPage() {
   const [mapping, setMapping] = useState<ImportMapping>({})
   const [chosenUnitId, setChosenUnitId] = useState<string | undefined>()
   const [createCategories, setCreateCategories] = useState(true)
+  const [chosenShopId, setChosenShopId] = useState<string | undefined>()
   const [preview, setPreview] = useState<ImportReport | null>(null)
   const [result, setResult] = useState<ImportReport | null>(null)
   const [filter, setFilter] = useState<ImportRowStatus | 'all'>('all')
@@ -63,8 +83,15 @@ export function ProductImportPage() {
 
   // Unité par défaut : la pièce, tant que l'utilisateur n'en a pas choisi une autre
   const defaultUnitId = chosenUnitId ?? units.find((unit) => unit.symbol === 'pce')?.id
-  const options = { mapping, defaultUnitId, createCategories }
-  const missingRequired = analysis?.fields.filter((field) => field.required && !mapping[field.field]) ?? []
+  // Le stock va dans la boutique de travail, sauf autre choix
+  const shopId = chosenShopId ?? activeShop?.id
+  // Sans stock.adjust, la colonne des quantités n'est ni proposée ni envoyée
+  const sentMapping: ImportMapping = canStock ? mapping : { ...mapping, quantity: undefined }
+  const withStock = !!sentMapping.quantity
+  const options = { mapping: sentMapping, ...(withStock && { shopId }), defaultUnitId, createCategories }
+  const fields = analysis?.fields.filter((field) => canStock || field.field !== 'quantity') ?? []
+  const missingRequired = fields.filter((field) => field.required && !mapping[field.field])
+  const canCheck = missingRequired.length === 0 && (!withStock || !!shopId)
 
   const analyze = useMutation({
     mutationFn: catalogService.analyzeImport,
@@ -175,8 +202,12 @@ export function ProductImportPage() {
             <Alert
               type="info"
               showIcon
-              title="Les quantités en stock ne sont pas encore importées"
-              description="Cette étape crée les fiches produits. Le stock de départ se saisira ensuite par boutique."
+              title={canStock ? 'Les quantités de votre fichier peuvent devenir le stock de départ' : 'Seules les fiches produits sont importées'}
+              description={
+                canStock
+                  ? 'Choisissez la colonne des quantités et la boutique : le stock y entre en une seule pièce « stock d’ouverture ». Un produit qui a déjà du stock dans cette boutique garde le sien.'
+                  : 'Importer des quantités en stock demande la permission « Ajuster le stock ».'
+              }
             />
             <div>
               <Button icon={<DownloadOutlined />} loading={downloadTemplate.isPending} onClick={() => downloadTemplate.mutate()}>
@@ -190,6 +221,7 @@ export function ProductImportPage() {
       {step === 'mapping' && analysis && (
         <MappingStep
           analysis={analysis}
+          fields={fields}
           mapping={mapping}
           onMappingChange={(field, column) => setMapping((current) => ({ ...current, [field]: column }))}
           units={units}
@@ -197,10 +229,11 @@ export function ProductImportPage() {
           onDefaultUnitChange={setChosenUnitId}
           createCategories={createCategories}
           onCreateCategoriesChange={setCreateCategories}
+          stock={withStock ? { shops, shopId, onShopChange: setChosenShopId } : null}
           footer={
             <div className="flex flex-wrap justify-between gap-2">
               <Button onClick={() => setStep('file')}>Changer de fichier</Button>
-              <Button type="primary" disabled={missingRequired.length > 0} loading={check.isPending} onClick={() => check.mutate()}>
+              <Button type="primary" disabled={!canCheck} loading={check.isPending} onClick={() => check.mutate()}>
                 Vérifier les {analysis.rowCount} ligne(s)
               </Button>
             </div>
@@ -216,6 +249,11 @@ export function ProductImportPage() {
               <Tag color="blue">Déjà enregistrés : {preview.existing}</Tag>
               <Tag>Ignorées : {preview.skipped}</Tag>
               <Tag color="red">Erreurs : {preview.errors}</Tag>
+              {preview.stock && (
+                <Tag color="purple">
+                  Mis en stock dans {preview.stock.shop.name} : {preview.stock.lines}
+                </Tag>
+              )}
             </div>
             {preview.errors > 0 ? (
               <Alert
@@ -226,7 +264,15 @@ export function ProductImportPage() {
                 action={<Button onClick={() => setStep('file')}>Recharger le fichier corrigé</Button>}
               />
             ) : (
-              preview.toCreate === 0 && <Alert type="info" showIcon title="Aucun nouveau produit à créer dans ce fichier" />
+              nothingToWrite(preview) && <Alert type="info" showIcon title="Rien de nouveau à importer dans ce fichier" />
+            )}
+            {preview.stock && preview.stock.alreadyStocked > 0 && (
+              <Alert
+                type="warning"
+                showIcon
+                title={`${preview.stock.alreadyStocked} produit(s) ont déjà du stock dans « ${preview.stock.shop.name} » : leur quantité ne sera pas importée`}
+                description="L’import ne remplit qu’un stock vide, pour ne jamais le compter deux fois. Pour corriger un stock existant, faites un inventaire."
+              />
             )}
             {preview.categoriesToCreate.length > 0 && (
               <Alert type="info" showIcon title={`Catégories qui seront créées : ${preview.categoriesToCreate.join(', ')}`} />
@@ -236,11 +282,11 @@ export function ProductImportPage() {
               <Button onClick={() => setStep('mapping')}>Modifier les colonnes</Button>
               <Button
                 type="primary"
-                disabled={preview.errors > 0 || preview.toCreate === 0}
+                disabled={preview.errors > 0 || nothingToWrite(preview)}
                 loading={confirm.isPending}
                 onClick={() => confirm.mutate()}
               >
-                Importer {preview.toCreate} produit(s)
+                {confirmLabel(preview)}
               </Button>
             </div>
           </div>
@@ -251,9 +297,11 @@ export function ProductImportPage() {
         <Card>
           <Result
             status="success"
-            title={`${result.toCreate} produit(s) importé(s)`}
+            title={result.toCreate > 0 ? `${result.toCreate} produit(s) importé(s)` : 'Stock de départ enregistré'}
             subTitle={[
-              result.existing > 0 && `${result.existing} déjà enregistré(s), non modifié(s)`,
+              result.stock?.adjustment &&
+                `stock de départ de ${result.stock.lines} produit(s) dans « ${result.stock.shop.name} » (pièce ${result.stock.adjustment.number})`,
+              result.existing > 0 && `${result.existing} déjà enregistré(s), fiche non modifiée`,
               result.skipped > 0 && `${result.skipped} ligne(s) ignorée(s)`,
               result.categoriesToCreate.length > 0 && `catégories créées : ${result.categoriesToCreate.join(', ')}`,
             ]
@@ -263,6 +311,13 @@ export function ProductImportPage() {
               <Link key="products" to="/products">
                 <Button type="primary">Voir les produits</Button>
               </Link>,
+              ...(result.stock?.adjustment
+                ? [
+                    <Link key="stock" to="/stock">
+                      <Button>Voir le stock</Button>
+                    </Link>,
+                  ]
+                : []),
               <Button key="again" onClick={restart}>
                 Importer un autre fichier
               </Button>,
@@ -276,6 +331,8 @@ export function ProductImportPage() {
 
 interface MappingStepProps {
   analysis: ImportAnalysis
+  /** Champs proposés (sans la quantité pour qui n'a pas stock.adjust) */
+  fields: ImportAnalysis['fields']
   mapping: ImportMapping
   onMappingChange: (field: ImportField, column: string | undefined) => void
   units: { id: string; name: string; symbol: string }[]
@@ -283,12 +340,15 @@ interface MappingStepProps {
   onDefaultUnitChange: (unitId: string) => void
   createCategories: boolean
   onCreateCategoriesChange: (value: boolean) => void
+  /** Choix de la boutique, affiché dès qu'une colonne de quantité est choisie */
+  stock: { shops: ShopSummary[]; shopId: string | undefined; onShopChange: (shopId: string) => void } | null
   footer: ReactNode
 }
 
 /** Étape 2 : quelle colonne du fichier alimente quel champ, avec un exemple tiré du fichier. */
 function MappingStep({
   analysis,
+  fields,
   mapping,
   onMappingChange,
   units,
@@ -296,6 +356,7 @@ function MappingStep({
   onDefaultUnitChange,
   createCategories,
   onCreateCategoriesChange,
+  stock,
   footer,
 }: MappingStepProps) {
   const used = new Set(Object.values(mapping).filter(Boolean))
@@ -321,7 +382,7 @@ function MappingStep({
             Nous avons deviné la correspondance d’après les intitulés : vérifiez-la. Seuls le nom et le prix de vente sont obligatoires ;
             sans référence, une référence ART-… est attribuée.
           </Typography.Text>
-          {analysis.fields.map(({ field, label, required }) => {
+          {fields.map(({ field, label, required }) => {
             const column = mapping[field]
             const sample = example(column)
             return (
@@ -360,6 +421,19 @@ function MappingStep({
             <Checkbox checked={createCategories} onChange={(event) => onCreateCategoriesChange(event.target.checked)}>
               Créer les catégories qui n’existent pas encore
             </Checkbox>
+            {stock && (
+              <label className="flex items-center gap-2">
+                <span>Boutique qui reçoit le stock</span>
+                <Select
+                  value={stock.shopId}
+                  onChange={stock.onShopChange}
+                  options={stock.shops.map((shop) => ({ value: shop.id, label: shop.name }))}
+                  className="w-56"
+                  aria-label="Boutique qui reçoit le stock"
+                  status={stock.shopId ? undefined : 'error'}
+                />
+              </label>
+            )}
           </div>
           {footer}
         </div>
@@ -384,6 +458,7 @@ function ReportTable({
 }) {
   const count = (status: ImportRowStatus) => rows.filter((row) => row.status === status).length
   const visible = filter === 'all' ? rows : rows.filter((row) => row.status === filter)
+  const withStock = rows.some((row) => row.quantity)
 
   const columns: TableColumnsType<ImportRow> = [
     { title: 'Ligne', dataIndex: 'line', width: 70 },
@@ -401,6 +476,19 @@ function ReportTable({
           '—'
         ),
     },
+    ...(withStock
+      ? [
+          {
+            title: 'Stock',
+            key: 'stock',
+            width: 120,
+            align: 'right' as const,
+            // Barrée : quantité lue mais pas importée (déjà du stock dans la boutique, produit archivé)
+            render: (_: unknown, row: ImportRow) =>
+              row.quantity ? <span className={row.stock === 'opening' ? '' : 'text-slate-400 line-through'}>{formatQuantity(row.quantity)}</span> : '—',
+          },
+        ]
+      : []),
     { title: 'Statut', key: 'status', width: 140, render: (_, row) => <Tag color={STATUS[row.status].color}>{STATUS[row.status].label}</Tag> },
     { title: 'Détail', key: 'messages', render: (_, row) => row.messages?.join(' · ') ?? '' },
   ]
