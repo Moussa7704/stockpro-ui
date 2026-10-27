@@ -1,8 +1,9 @@
-import { DatabaseOutlined, EditOutlined, InboxOutlined, PlusOutlined, SearchOutlined, UndoOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, EditOutlined, InboxOutlined, PlusOutlined, SearchOutlined, UndoOutlined, UploadOutlined } from '@ant-design/icons'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Alert, App, Button, Card, Input, Popconfirm, Segmented, Space, Table, Tag, Tooltip, TreeSelect, Typography } from 'antd'
 import type { TableColumnsType, TableProps } from 'antd'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Money } from '../../components/Money'
 import { useDebouncedValue } from '../../hook/useDebouncedValue'
 import { usePermission } from '../../hook/usePermission'
@@ -189,9 +190,14 @@ export function ProductsPage() {
           Produits
         </Typography.Title>
         {canManage && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormProduct(null)}>
-            Nouveau produit
-          </Button>
+          <Space wrap>
+            <Link to="/products/import">
+              <Button icon={<UploadOutlined />}>Importer un fichier</Button>
+            </Link>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormProduct(null)}>
+              Nouveau produit
+            </Button>
+          </Space>
         )}
       </div>
 

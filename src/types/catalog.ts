@@ -100,3 +100,51 @@ export interface SupplierListQuery {
   search?: string
   includeArchived?: boolean
 }
+
+// --- Import de produits depuis le fichier du commerçant (.xlsx / .csv)
+export const IMPORT_FIELDS = ['name', 'sku', 'barcode', 'category', 'unit', 'salePrice', 'purchasePrice', 'alertThreshold', 'description'] as const
+export type ImportField = (typeof IMPORT_FIELDS)[number]
+/** Champ StockPro → nom de la colonne du fichier */
+export type ImportMapping = Partial<Record<ImportField, string>>
+
+export interface ImportAnalysis {
+  filename: string
+  columns: string[]
+  rowCount: number
+  /** Premières lignes, numérotées comme dans le fichier */
+  sample: { line: number; cells: string[] }[]
+  fields: { field: ImportField; label: string; required: boolean }[]
+  suggestedMapping: ImportMapping
+}
+
+export interface ImportOptions {
+  mapping: ImportMapping
+  defaultUnitId?: string
+  createCategories: boolean
+  dryRun: boolean
+}
+
+export type ImportRowStatus = 'create' | 'existing' | 'skipped' | 'error'
+
+export interface ImportRow {
+  line: number
+  status: ImportRowStatus
+  name: string
+  sku: string | null
+  generatedSku?: boolean
+  messages?: string[]
+}
+
+export interface ImportReport {
+  dryRun: boolean
+  filename: string
+  totalRows: number
+  /** Aperçu : produits qui seraient créés ; import : produits créés */
+  toCreate: number
+  existing: number
+  skipped: number
+  errors: number
+  /** Aperçu : catégories qui seraient créées ; import : catégories créées */
+  categoriesToCreate: string[]
+  rows: ImportRow[]
+}

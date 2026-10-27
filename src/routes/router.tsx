@@ -11,6 +11,7 @@ import { RouteError } from './RouteError'
 const AccountPage = lazyPage(() => import('../features/account/AccountPage'), 'AccountPage')
 const AuditLogPage = lazyPage(() => import('../features/audit/AuditLogPage'), 'AuditLogPage')
 const CategoriesPage = lazyPage(() => import('../features/catalog/CategoriesPage'), 'CategoriesPage')
+const ProductImportPage = lazyPage(() => import('../features/catalog/ProductImportPage'), 'ProductImportPage')
 const ProductsPage = lazyPage(() => import('../features/catalog/ProductsPage'), 'ProductsPage')
 const SuppliersPage = lazyPage(() => import('../features/catalog/SuppliersPage'), 'SuppliersPage')
 const UnitsPage = lazyPage(() => import('../features/catalog/UnitsPage'), 'UnitsPage')
@@ -107,6 +108,10 @@ export const routes: RouteObject[] = [
                       { path: '/products', element: <ProductsPage /> },
                       { path: '/suppliers', element: <SuppliersPage /> },
                     ],
+                  },
+                  {
+                    element: <PermissionRoute permission="products.manage" />,
+                    children: [{ path: '/products/import', element: <ProductImportPage /> }],
                   },
                   // Stock : consultation avec stock.view (les actions sont réservées dans chaque écran)
                   {

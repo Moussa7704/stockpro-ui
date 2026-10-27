@@ -1,6 +1,9 @@
 import type {
   Category,
   CategoryInput,
+  ImportAnalysis,
+  ImportOptions,
+  ImportReport,
   Product,
   ProductInput,
   ProductListQuery,
@@ -11,7 +14,8 @@ import type {
   UnitInput,
 } from '../types/catalog'
 import type { Paginated } from '../types/settings'
-import { api } from './api'
+import { saveBlob } from '../utils/download'
+import { api, http } from './api'
 
 // Catalogue. Lecture : tout membre (unités, catégories) ou products.view (produits, fournisseurs).
 // Écriture : products.manage (prix : prices.manage), fournisseurs : purchases.manage.
@@ -68,4 +72,25 @@ export function createProduct(input: ProductInput) {
 /** N'envoyer que ce qui change : un prix envoyé, même identique, exige prices.manage. */
 export function updateProduct(id: string, input: Partial<ProductInput>) {
   return api<{ product: Product }>(`/products/${id}`, { method: 'PATCH', body: input })
+}
+
+// --- Import depuis le fichier du commerçant (products.manage). Le fichier est renvoyé à chaque
+// étape : le serveur ne garde rien entre l'analyse, l'aperçu et l'import.
+function importForm(file: File, options?: ImportOptions): FormData {
+  const form = new FormData()
+  form.append('file', file)
+  if (options) form.append('options', JSON.stringify(options))
+  return form
+}
+/** Étape 1 : colonnes du fichier et correspondance proposée. */
+export function analyzeImport(file: File) {
+  return api<{ analysis: ImportAnalysis }>('/products/import/analyze', { method: 'POST', body: importForm(file) })
+}
+/** Aperçu (dryRun) ou import ; l'import est tout ou rien et rejouable sans doublon (clé d'idempotence). */
+export function runImport(file: File, options: ImportOptions, idempotencyKey?: string) {
+  return api<{ report: ImportReport }>('/products/import', { method: 'POST', body: importForm(file, options), idempotencyKey })
+}
+export async function downloadImportTemplate() {
+  const res = await http.get<Blob>('/products/import/template', { responseType: 'blob' })
+  saveBlob(res.data, 'modele-import-produits.xlsx')
 }
