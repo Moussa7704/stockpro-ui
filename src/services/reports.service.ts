@@ -1,4 +1,5 @@
 import type { Dashboard, ExpensesReport, ExportFormat, ProfitAndLoss, ReportName, SalesReport, StockValueReport, TopProductsReport } from '../types/reports'
+import { filenameFrom, saveBlob } from '../utils/download'
 import { api, http } from './api'
 
 // Rapports (permission reports.view). Les mêmes adresses renvoient un fichier Excel ou PDF
@@ -27,21 +28,8 @@ export function getProfitAndLoss(query: Period) {
   return api<{ report: ProfitAndLoss }>('/reports/profit-and-loss', { params: { ...query } })
 }
 
-/** Nom de fichier proposé par le serveur (Content-Disposition), sinon un nom par défaut. */
-function filenameFrom(header: string | undefined, fallback: string): string {
-  const match = header?.match(/filename="?([^";]+)"?/)
-  return match?.[1] ?? fallback
-}
-
 /** Télécharge un rapport en Excel ou PDF : le fichier est enregistré par le navigateur. */
 export async function downloadReport(report: ReportName, format: ExportFormat, params: Record<string, string | number | undefined>) {
   const res = await http.get<Blob>(`/reports/${report}`, { params: { ...params, format }, responseType: 'blob' })
-  const url = URL.createObjectURL(res.data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filenameFrom(res.headers['content-disposition'] as string | undefined, `${report}.${format}`)
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  saveBlob(res.data, filenameFrom(res.headers['content-disposition'] as string | undefined, `${report}.${format}`))
 }

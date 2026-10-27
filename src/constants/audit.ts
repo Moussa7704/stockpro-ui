@@ -29,6 +29,7 @@ export const ACTION_LABELS: Record<string, string> = {
   'product.create': 'Produit créé',
   'product.update': 'Produit modifié',
   'product.price_change': 'Prix de vente modifié',
+  'product.import': 'Produits importés (fichier)',
   'stock.adjust': 'Stock ajusté',
   'transfer.create': 'Transfert préparé',
   'transfer.ship': 'Transfert expédié',
