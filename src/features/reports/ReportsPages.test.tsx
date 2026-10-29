@@ -45,16 +45,22 @@ describe('Tableau de bord', () => {
     expect(screen.getAllByRole('columnheader', { name: 'CA net' }).length).toBeGreaterThanOrEqual(2)
   })
 
-  it('filtre par boutique', async () => {
+  it('suit la boutique choisie en haut de page, ou toutes', async () => {
     const { last } = setup()
     const { user } = renderApp('/', { session: manager })
 
     await screen.findByText('150 000 FCFA')
-    await user.click(screen.getByLabelText('Filtrer par boutique'))
+    // Par défaut : la première boutique accessible
+    await waitFor(() => expect(last('/api/reports/dashboard')?.search.get('shopId')).toBe('shop-1'))
+    await user.click(screen.getByLabelText('Boutique active'))
     await user.click(await screen.findByTitle('Boutique Marché'))
     await waitFor(() => expect(last('/api/reports/dashboard')?.search.get('shopId')).toBe('shop-2'))
     // La carte « À réapprovisionner » suit la même boutique
     await waitFor(() => expect(last('/api/stock/alerts')?.search.get('shopId')).toBe('shop-2'))
+
+    await user.click(screen.getByLabelText('Boutique active'))
+    await user.click(await screen.findByTitle('Toutes les boutiques'))
+    await waitFor(() => expect(last('/api/reports/dashboard')?.search.has('shopId')).toBe(false))
   })
 
   it('sans accès aux rapports : accueil avec raccourcis, aucune donnée financière demandée', async () => {

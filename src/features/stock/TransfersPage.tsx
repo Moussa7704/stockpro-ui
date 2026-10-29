@@ -4,14 +4,14 @@ import { Alert, App, Button, Card, Select, Table, Tag, Typography } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { useState } from 'react'
 import { TRANSFER_STATUS } from '../../constants/stock'
-import { useShops } from '../../hook/useActiveShop'
+import { useShopFilter, useShops } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 import { usePermission } from '../../hook/usePermission'
 import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage } from '../../services/api'
 import type { StockTransfer, TransferStatus } from '../../types/stock'
 import { formatDateTime } from '../../utils/format'
 import { useShopName, useTransfers } from './queries'
-import { ShopFilter } from './ShopFilter'
 import { TransferDetailDrawer, TransferFormDrawer } from './TransferDrawers'
 
 const PAGE_SIZE = 20
@@ -23,9 +23,9 @@ export function TransfersPage() {
   const canTransfer = usePermission('stock.transfer')
   const { data: shops = [] } = useShops()
   const shopName = useShopName()
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const [status, setStatus] = useState<TransferStatus | undefined>()
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePage(shopId)
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const { data, isFetching, error } = useTransfers({ page, pageSize: PAGE_SIZE, shopId, status })
@@ -76,13 +76,6 @@ export function TransfersPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <ShopFilter
-          value={shopId}
-          onChange={(value) => {
-            setShopId(value)
-            setPage(1)
-          }}
-        />
         <Select
           allowClear
           value={status}

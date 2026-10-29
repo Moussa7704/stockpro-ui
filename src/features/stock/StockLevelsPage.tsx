@@ -10,8 +10,9 @@ import type { StockAlert, StockLevel } from '../../types/stock'
 import { formatQuantity } from '../../utils/format'
 import { useStockAlerts, useStockLevels } from './queries'
 import { movementsLink } from './links'
-import { ShopFilter } from './ShopFilter'
 import { StockAlertStatusTag } from './StockAlertStatusTag'
+import { useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 
 const PAGE_SIZE = 20
 
@@ -84,10 +85,10 @@ export function StockLevelsPage() {
   // /stock?vue=alertes ouvre directement les alertes (liens du tableau de bord)
   const [searchParams] = useSearchParams()
   const [view, setView] = useState<'levels' | 'alerts'>(searchParams.get('vue') === 'alertes' ? 'alerts' : 'levels')
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const [search, setSearch] = useState('')
   const [lowStock, setLowStock] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePage(shopId)
   const debouncedSearch = useDebouncedValue(search.trim())
 
   const { data, isFetching, error } = useStockLevels({ page, pageSize: PAGE_SIZE, shopId, search: debouncedSearch || undefined, lowStock })
@@ -172,13 +173,6 @@ export function StockLevelsPage() {
             },
           ]}
           aria-label="Affichage"
-        />
-        <ShopFilter
-          value={shopId}
-          onChange={(value) => {
-            setShopId(value)
-            setPage(1)
-          }}
         />
         {view === 'levels' && (
           <>

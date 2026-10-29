@@ -5,14 +5,14 @@ import type { TableColumnsType } from 'antd'
 import { useRef, useState } from 'react'
 import { Money } from '../../components/Money'
 import { DOCUMENT_STATUS } from '../../constants/purchases'
-import { useActiveShop } from '../../hook/useActiveShop'
+import { useActiveShop, useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage, newIdempotencyKey } from '../../services/api'
 import * as purchasesService from '../../services/purchases.service'
 import type { ReceiptStatus, SupplierReturn } from '../../types/purchases'
 import { formatDateTime, formatQuantity } from '../../utils/format'
 import { useShopName } from '../stock/queries'
-import { ShopFilter } from '../stock/ShopFilter'
 import { PricedLinesEditor } from './PricedLinesEditor'
 import { validateLines, type PricedLine } from './pricedLines'
 import { useReturns, useSupplierName } from './queries'
@@ -169,8 +169,8 @@ export function ReturnsPage() {
   const supplierName = useSupplierName()
   const [status, setStatus] = useState<ReceiptStatus | undefined>()
   const [supplierId, setSupplierId] = useState<string | undefined>()
-  const [shopId, setShopId] = useState<string | undefined>()
-  const [page, setPage] = useState(1)
+  const shopId = useShopFilter()
+  const [page, setPage] = usePage(shopId)
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const { data, isFetching, error } = useReturns({ page, pageSize: PAGE_SIZE, status, supplierId, shopId })
@@ -223,7 +223,6 @@ export function ReturnsPage() {
           className="w-44"
           aria-label="Filtrer par état"
         />
-        <ShopFilter value={shopId} onChange={filter(setShopId)} />
       </div>
 
       {error && <Alert type="error" title={getErrorMessage(error)} showIcon />}

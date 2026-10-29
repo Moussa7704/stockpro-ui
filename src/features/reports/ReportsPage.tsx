@@ -12,7 +12,7 @@ import { getErrorMessage } from '../../services/api'
 import * as reportsService from '../../services/reports.service'
 import type { ExportFormat, GroupBy, ReportName, SalesFigures, TopProductsReport } from '../../types/reports'
 import { formatDate, formatMoney, formatQuantity } from '../../utils/format'
-import { ShopFilter } from '../stock/ShopFilter'
+import { useShopFilter } from '../../hook/useActiveShop'
 
 interface Filters {
   from: string
@@ -304,7 +304,7 @@ export function ReportsPage() {
   const requested = searchParams.get('rapport') as Tab | null
   const tab: Tab = requested && TABS.includes(requested) ? requested : 'sales'
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const filters: Filters = { from: range[0].format('YYYY-MM-DD'), to: range[1].format('YYYY-MM-DD'), shopId }
 
   return (
@@ -330,7 +330,6 @@ export function ReportsPage() {
             aria-label="Période"
           />
         )}
-        <ShopFilter value={shopId} onChange={setShopId} />
       </div>
       <Tabs
         activeKey={tab}

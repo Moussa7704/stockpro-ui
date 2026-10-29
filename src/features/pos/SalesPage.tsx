@@ -9,16 +9,17 @@ import * as posService from '../../services/pos.service'
 import type { CashSession, Sale } from '../../types/pos'
 import { formatDateTime } from '../../utils/format'
 import { useShopName } from '../stock/queries'
-import { ShopFilter } from '../stock/ShopFilter'
 import { SaleDetailDrawer } from './SaleDrawers'
 import { useSession } from './queries'
 import { TicketModal } from './TicketModal'
+import { useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 
 const PAGE_SIZE = 20
 
 function SessionsTable({ shopId, onOpen }: { shopId?: string; onOpen: (id: string) => void }) {
   const shopName = useShopName()
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePage(shopId)
   const query = { page, pageSize: PAGE_SIZE, shopId }
   const { data, isFetching, error } = useQuery({ queryKey: queryKeys.pos.sessions(query), queryFn: () => posService.listSessions(query), placeholderData: keepPreviousData })
   const columns: TableColumnsType<CashSession> = [
@@ -92,9 +93,9 @@ export function SalesPage() {
   const { message } = App.useApp()
   const queryClient = useQueryClient()
   const [view, setView] = useState<'sales' | 'sessions'>('sales')
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const [status, setStatus] = useState<'all' | 'completed' | 'cancelled'>('all')
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePage(shopId)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [ticketId, setTicketId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -135,13 +136,6 @@ export function SalesPage() {
             { value: 'sessions', label: 'Sessions de caisse' },
           ]}
           aria-label="Affichage"
-        />
-        <ShopFilter
-          value={shopId}
-          onChange={(value) => {
-            setShopId(value)
-            setPage(1)
-          }}
         />
         {view === 'sales' && (
           <Segmented<'all' | 'completed' | 'cancelled'>

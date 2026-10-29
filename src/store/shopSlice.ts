@@ -11,6 +11,9 @@ interface ShopState {
 
 export const SHOP_STORAGE_KEY = 'stockpro.activeShops'
 
+/** Valeur mémorisée pour « Toutes les boutiques » (cumul, sans filtre). */
+export const ALL_SHOPS = 'all'
+
 /** Lecture prudente : stockage indisponible (navigation privée) ou contenu invalide → rien. */
 export function loadShopState(): ShopState {
   try {

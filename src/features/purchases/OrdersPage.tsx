@@ -10,11 +10,12 @@ import { getErrorMessage } from '../../services/api'
 import type { OrderStatus, PurchaseOrder } from '../../types/purchases'
 import { formatDate, formatDateTime } from '../../utils/format'
 import { useShopName } from '../stock/queries'
-import { ShopFilter } from '../stock/ShopFilter'
 import { OrderDetailDrawer, OrderFormDrawer } from './OrderDrawers'
 import { useOrders } from './queries'
 import { ReceiptFormDrawer } from './ReceiptDrawers'
 import { SupplierSelect } from './SupplierSelect'
+import { useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 
 const PAGE_SIZE = 20
 
@@ -25,8 +26,8 @@ export function OrdersPage() {
   const shopName = useShopName()
   const [status, setStatus] = useState<OrderStatus | undefined>()
   const [supplierId, setSupplierId] = useState<string | undefined>()
-  const [shopId, setShopId] = useState<string | undefined>()
-  const [page, setPage] = useState(1)
+  const shopId = useShopFilter()
+  const [page, setPage] = usePage(shopId)
   // undefined : fermé ; null : nouvelle commande ; commande : modification du brouillon
   const [formOrder, setFormOrder] = useState<PurchaseOrder | null | undefined>(undefined)
   const [detailId, setDetailId] = useState<string | null>(null)
@@ -85,7 +86,6 @@ export function OrdersPage() {
           className="w-52"
           aria-label="Filtrer par état"
         />
-        <ShopFilter value={shopId} onChange={filter(setShopId)} />
       </div>
 
       {error && <Alert type="error" title={getErrorMessage(error)} showIcon />}

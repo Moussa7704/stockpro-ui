@@ -30,24 +30,25 @@ import {
   TruckOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { App, Avatar, Button, Dropdown, Layout, Menu, Select, Typography } from 'antd'
+import { App, Avatar, Button, Dropdown, Layout, Menu, Select, Skeleton, Typography } from 'antd'
 import type { MenuProps } from 'antd'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useActiveShop } from '../hook/useActiveShop'
+import { useActiveShop, useShops } from '../hook/useActiveShop'
 import { PageSuspense } from '../components/PageSuspense'
 import { useAuth } from '../hook/useAuth'
 import { getErrorMessage } from '../services/api'
+import { ALL_SHOPS } from '../store/shopSlice'
 import type { Permission } from '../types/access'
 
 const { Header, Sider, Content } = Layout
 
-/** Boutique de travail (caisse, stock…) : choix mémorisé par entreprise. */
+/** Boutique affichée dans tous les écrans (ou toutes) : choix mémorisé par entreprise. */
 function ShopSelector() {
-  const { shops, activeShop, setActiveShop, isLoading } = useActiveShop()
+  const { shops, activeShop, isAllShops, setActiveShop, isLoading } = useActiveShop()
 
-  if (isLoading || !activeShop) return null
-  if (shops.length === 1) {
+  if (isLoading || shops.length === 0) return null
+  if (shops.length === 1 && activeShop) {
     return (
       <Typography.Text type="secondary" className="hidden items-center gap-1 sm:inline-flex">
         <ShopOutlined /> {activeShop.name}
@@ -56,11 +57,14 @@ function ShopSelector() {
   }
   return (
     <Select
-      value={activeShop.id}
+      value={isAllShops ? ALL_SHOPS : activeShop?.id}
       onChange={setActiveShop}
-      options={shops.map((shop) => ({ value: shop.id, label: shop.name }))}
+      options={[
+        { value: ALL_SHOPS, label: 'Toutes les boutiques' },
+        ...shops.map((shop) => ({ value: shop.id, label: shop.name })),
+      ]}
       suffixIcon={<ShopOutlined />}
-      className="hidden w-44 sm:block"
+      className="w-36 sm:w-48"
       aria-label="Boutique active"
     />
   )
@@ -152,6 +156,9 @@ export function AppLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
+  // Les écrans filtrent sur la boutique du haut : on attend la liste des boutiques avant de les
+  // afficher (sinon une première requête partirait « toutes boutiques »)
+  const { isLoading: shopsLoading } = useShops()
   // Seul le contenu défile : on le remet en haut à chaque changement d'écran
   const contentRef = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -242,9 +249,13 @@ export function AppLayout() {
           </Dropdown>
         </Header>
         <Content ref={contentRef} className="min-h-0 flex-1 overflow-y-auto p-6">
-          <PageSuspense>
-            <Outlet />
-          </PageSuspense>
+          {shopsLoading ? (
+            <Skeleton active />
+          ) : (
+            <PageSuspense>
+              <Outlet />
+            </PageSuspense>
+          )}
         </Content>
       </Layout>
     </Layout>
