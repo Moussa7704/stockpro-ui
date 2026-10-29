@@ -7,6 +7,7 @@ import { mockStockApi } from '../../test/stockApi'
 import { createAppStore } from '../../store'
 import { sessionCleared } from '../../store/authSlice'
 import { cartCleared, productAdded } from '../../store/posSlice'
+import { ALL_SHOPS } from '../../store/shopSlice'
 
 const cashier = meResponse({ permissions: ['sales.create', 'cash_sessions.manage', 'customers.manage', 'products.view'], roleCode: 'cashier' })
 const manager = meResponse({ permissions: ['sales.create', 'sales.discount', 'sales.cancel_refund', 'cash_sessions.manage', 'customers.manage', 'products.view'] })
@@ -22,6 +23,14 @@ async function scan(user: ReturnType<typeof renderApp>['user'], code: string) {
 }
 
 describe('Caisse : session', () => {
+  it('« Toutes les boutiques » en haut : la caisse demande d’en choisir une, sans rien charger', async () => {
+    const { requestsTo } = setup()
+    renderApp('/pos', { session: cashier, shop: { byCompany: { 'company-1': ALL_SHOPS } } })
+
+    expect(await screen.findByText('La caisse travaille dans une seule boutique : choisissez-la en haut de la page.')).toBeInTheDocument()
+    expect(requestsTo('GET', '/api/pos/sessions/current')).toHaveLength(0)
+  })
+
   it('caisse fermée : on l’ouvre avec le fond de caisse', async () => {
     const { requestsTo } = setup({ sessionOpen: false })
     const { user } = renderApp('/pos', { session: cashier })

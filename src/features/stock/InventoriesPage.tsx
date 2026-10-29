@@ -5,7 +5,8 @@ import type { TableColumnsType } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { INVENTORY_STATUS } from '../../constants/stock'
-import { useActiveShop } from '../../hook/useActiveShop'
+import { useActiveShop, useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 import { usePermission } from '../../hook/usePermission'
 import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage } from '../../services/api'
@@ -13,7 +14,6 @@ import * as stockService from '../../services/stock.service'
 import type { InventoryCount, InventoryStatus } from '../../types/stock'
 import { formatDateTime } from '../../utils/format'
 import { useInventories, useShopName } from './queries'
-import { ShopFilter } from './ShopFilter'
 
 const PAGE_SIZE = 20
 
@@ -46,8 +46,8 @@ export function InventoriesPage() {
   const queryClient = useQueryClient()
   const canAdjust = usePermission('stock.adjust')
   const shopName = useShopName()
-  const [shopId, setShopId] = useState<string | undefined>()
-  const [page, setPage] = useState(1)
+  const shopId = useShopFilter()
+  const [page, setPage] = usePage(shopId)
   const [creating, setCreating] = useState(false)
   const { data, isFetching, error } = useInventories({ page, pageSize: PAGE_SIZE, shopId })
 
@@ -80,13 +80,6 @@ export function InventoriesPage() {
           </Button>
         )}
       </div>
-      <ShopFilter
-        value={shopId}
-        onChange={(value) => {
-          setShopId(value)
-          setPage(1)
-        }}
-      />
 
       {error && <Alert type="error" title={getErrorMessage(error)} showIcon />}
 

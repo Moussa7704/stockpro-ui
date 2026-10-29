@@ -6,7 +6,8 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { useRef, useState } from 'react'
 import { AmountInput } from '../../components/AmountInput'
 import { Money } from '../../components/Money'
-import { useActiveShop } from '../../hook/useActiveShop'
+import { useActiveShop, useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage, newIdempotencyKey } from '../../services/api'
 import * as customersService from '../../services/customers.service'
@@ -15,7 +16,6 @@ import { formatDate } from '../../utils/format'
 import { useCurrentSession } from '../pos/queries'
 import { usePaymentMethods } from '../settings/queries'
 import { useShopName } from '../stock/queries'
-import { ShopFilter } from '../stock/ShopFilter'
 
 const PAGE_SIZE = 20
 
@@ -211,11 +211,11 @@ export function ExpensesPage() {
   const shopName = useShopName()
   const { data: categories = [] } = useExpenseCategories()
   const [view, setView] = useState<'expenses' | 'categories'>('expenses')
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const [categoryId, setCategoryId] = useState<string | undefined>()
   const [status, setStatus] = useState<ExpenseStatus | undefined>()
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().startOf('month'), dayjs()])
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePage(shopId)
   const [creating, setCreating] = useState(false)
   const [cancelling, setCancelling] = useState<Expense | null>(null)
 
@@ -308,7 +308,6 @@ export function ExpensesPage() {
         {view === 'expenses' && (
           <>
             <DatePicker.RangePicker value={range} onChange={(value) => value?.[0] && value[1] && filter(setRange)([value[0], value[1]])} format="DD/MM/YYYY" allowClear={false} aria-label="Période" />
-            <ShopFilter value={shopId} onChange={filter(setShopId)} />
             <Select allowClear value={categoryId} onChange={(value) => filter(setCategoryId)(value ?? undefined)} placeholder="Toutes les catégories" options={categories.map((category) => ({ value: category.id, label: category.name }))} className="w-52" aria-label="Filtrer par catégorie" />
             <Select
               allowClear

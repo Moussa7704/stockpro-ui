@@ -118,13 +118,13 @@ describe('Tableau de bord sur une période passée', () => {
     expect(screen.getByText('Chiffre d’affaires net — 7 derniers jours')).toBeInTheDocument()
   })
 
-  it('le filtre par boutique s’ajoute à la période', async () => {
+  it('la boutique choisie en haut de page s’ajoute à la période, sans la réinitialiser', async () => {
     const { last } = setup()
     const { user } = renderApp('/', { session: manager })
     await screen.findByText('Chiffre d’affaires du jour')
 
     await user.click(screen.getByText('Mois'))
-    await user.click(screen.getByLabelText('Filtrer par boutique'))
+    await user.click(await screen.findByLabelText('Boutique active'))
     await user.click(await screen.findByTitle('Boutique Marché'))
 
     await waitFor(() => expect(last('/api/reports/dashboard')?.search.get('shopId')).toBe('shop-2'))

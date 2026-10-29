@@ -48,7 +48,7 @@ export function PosPage() {
   const dispatch = useAppDispatch()
   const company = useAppSelector(selectActiveCompany)
   const cart = useAppSelector(selectCart)
-  const { activeShop } = useActiveShop()
+  const { activeShop, isAllShops } = useActiveShop()
   const { data: session, isPending: sessionLoading, error: sessionError } = useCurrentSession(activeShop?.id)
   const { data: methods = [] } = usePaymentMethods()
   const { data: companySettings } = useCompany()
@@ -137,6 +137,7 @@ export function PosPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [cart.lines.length, cartProblem, paying, sale])
 
+  if (isAllShops) return <Alert type="info" showIcon title="La caisse travaille dans une seule boutique : choisissez-la en haut de la page." />
   if (!activeShop) return <Alert type="info" showIcon title="Aucune boutique accessible : la caisse est indisponible." />
   if (sessionError) return <Alert type="error" showIcon title={getErrorMessage(sessionError)} />
   if (sessionLoading) return <Skeleton active />

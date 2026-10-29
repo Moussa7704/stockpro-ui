@@ -6,10 +6,11 @@ import { meResponse, shopsFixture } from '../test/fixtures'
 import { renderWithProviders } from '../test/render'
 import { server } from '../test/server'
 import { createAppStore } from './index'
-import { activeShopChanged, loadShopState, SHOP_STORAGE_KEY } from './shopSlice'
+import { activeShopChanged, ALL_SHOPS, loadShopState, SHOP_STORAGE_KEY } from './shopSlice'
 
 function ActiveShopName() {
-  const { activeShop } = useActiveShop()
+  const { activeShop, isAllShops } = useActiveShop()
+  if (isAllShops) return <span>Toutes les boutiques</span>
   return <span>{activeShop ? `Boutique active : ${activeShop.name}` : 'Aucune'}</span>
 }
 
@@ -40,6 +41,18 @@ describe('boutique active', () => {
     server.use(mock.get('/api/shops', () => HttpResponse.json({ shops: shopsFixture })))
 
     renderWithProviders(<ActiveShopName />, { session: meResponse(), shop: { byCompany: { 'company-1': 'shop-supprimee' } } })
+    expect(await screen.findByText('Boutique active : Boutique Centre')).toBeInTheDocument()
+  })
+
+  it('« Toutes les boutiques » mémorisé : aucune boutique active (cumul)', async () => {
+    server.use(mock.get('/api/shops', () => HttpResponse.json({ shops: shopsFixture })))
+    renderWithProviders(<ActiveShopName />, { session: meResponse(), shop: { byCompany: { 'company-1': ALL_SHOPS } } })
+    expect(await screen.findByText('Toutes les boutiques')).toBeInTheDocument()
+  })
+
+  it('« Toutes les boutiques » avec une seule boutique accessible : on retombe sur elle', async () => {
+    server.use(mock.get('/api/shops', () => HttpResponse.json({ shops: [shopsFixture[0]] })))
+    renderWithProviders(<ActiveShopName />, { session: meResponse(), shop: { byCompany: { 'company-1': ALL_SHOPS } } })
     expect(await screen.findByText('Boutique active : Boutique Centre')).toBeInTheDocument()
   })
 })

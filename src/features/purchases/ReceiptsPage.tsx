@@ -9,10 +9,11 @@ import { queryKeys } from '../../lib/queryKeys'
 import { getErrorMessage } from '../../services/api'
 import type { GoodsReceipt, ReceiptStatus } from '../../types/purchases'
 import { formatDateTime } from '../../utils/format'
-import { ShopFilter } from '../stock/ShopFilter'
 import { useReceipts, useSupplierName } from './queries'
 import { ReceiptDetailDrawer, ReceiptFormDrawer } from './ReceiptDrawers'
 import { SupplierSelect } from './SupplierSelect'
+import { useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 
 const PAGE_SIZE = 20
 
@@ -23,8 +24,8 @@ export function ReceiptsPage() {
   const supplierName = useSupplierName()
   const [status, setStatus] = useState<ReceiptStatus | undefined>()
   const [supplierId, setSupplierId] = useState<string | undefined>()
-  const [shopId, setShopId] = useState<string | undefined>()
-  const [page, setPage] = useState(1)
+  const shopId = useShopFilter()
+  const [page, setPage] = usePage(shopId)
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const { data, isFetching, error } = useReceipts({ page, pageSize: PAGE_SIZE, status, supplierId, shopId })
@@ -80,7 +81,6 @@ export function ReceiptsPage() {
           className="w-44"
           aria-label="Filtrer par état"
         />
-        <ShopFilter value={shopId} onChange={filter(setShopId)} />
       </div>
 
       {error && <Alert type="error" title={getErrorMessage(error)} showIcon />}

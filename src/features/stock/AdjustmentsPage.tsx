@@ -12,7 +12,8 @@ import type { StockAdjustment } from '../../types/stock'
 import { formatDateTime, formatQuantity } from '../../utils/format'
 import { AdjustmentFormDrawer } from './AdjustmentFormDrawer'
 import { useAdjustments, useShopName } from './queries'
-import { ShopFilter } from './ShopFilter'
+import { useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 
 const PAGE_SIZE = 20
 
@@ -68,8 +69,8 @@ export function AdjustmentsPage() {
   const queryClient = useQueryClient()
   const canAdjust = usePermission('stock.adjust')
   const shopName = useShopName()
-  const [shopId, setShopId] = useState<string | undefined>()
-  const [page, setPage] = useState(1)
+  const shopId = useShopFilter()
+  const [page, setPage] = usePage(shopId)
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
   const { data, isFetching, error } = useAdjustments({ page, pageSize: PAGE_SIZE, shopId })
@@ -103,13 +104,6 @@ export function AdjustmentsPage() {
           </Button>
         )}
       </div>
-      <ShopFilter
-        value={shopId}
-        onChange={(value) => {
-          setShopId(value)
-          setPage(1)
-        }}
-      />
 
       {error && <Alert type="error" title={getErrorMessage(error)} showIcon />}
 

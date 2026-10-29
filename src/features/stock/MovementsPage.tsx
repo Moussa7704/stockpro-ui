@@ -8,7 +8,8 @@ import { getErrorMessage } from '../../services/api'
 import { MOVEMENT_TYPES, type MovementType, type StockMovement } from '../../types/stock'
 import { formatDateTime, formatQuantity } from '../../utils/format'
 import { useMovements, useShopName } from './queries'
-import { ShopFilter } from './ShopFilter'
+import { useShopFilter } from '../../hook/useActiveShop'
+import { usePage } from '../../hook/usePage'
 
 const PAGE_SIZE = 25
 
@@ -18,9 +19,9 @@ export function MovementsPage() {
   // Ouvert depuis un produit : ?productId=…&produit=Nom
   const productId = searchParams.get('productId') ?? undefined
   const productName = searchParams.get('produit')
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const [type, setType] = useState<MovementType | undefined>()
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePage(shopId)
   const shopName = useShopName()
 
   const { data, isFetching, error } = useMovements({ page, pageSize: PAGE_SIZE, shopId, productId, type })
@@ -83,13 +84,6 @@ export function MovementsPage() {
             Produit : {productName ?? 'sélectionné'}
           </Tag>
         )}
-        <ShopFilter
-          value={shopId}
-          onChange={(value) => {
-            setShopId(value)
-            setPage(1)
-          }}
-        />
         <Select
           allowClear
           value={type}

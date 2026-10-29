@@ -13,10 +13,10 @@ import { getErrorMessage } from '../../services/api'
 import * as reportsService from '../../services/reports.service'
 import type { Dashboard, TopProduct } from '../../types/reports'
 import { formatDate, formatMoney, formatQuantity } from '../../utils/format'
-import { ShopFilter } from '../stock/ShopFilter'
 import { comparisonLabel, periodBounds, periodTitle, type PeriodSelection } from './period'
 import { PeriodPicker } from './PeriodPicker'
 import { RestockCard } from './RestockCard'
+import { useShopFilter } from '../../hook/useActiveShop'
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
 
@@ -117,7 +117,7 @@ function PeriodTiles({ dashboard, selection }: { dashboard: Dashboard; selection
 /** Tableau de bord (reports.view) : le jour et le mois en cours, ou une période passée. */
 function Overview() {
   const { user, can } = useAuth()
-  const [shopId, setShopId] = useState<string | undefined>()
+  const shopId = useShopFilter()
   const [selection, setSelection] = useState<PeriodSelection>({ mode: 'today' })
   const bounds = periodBounds(selection)
   const { data: dashboard, error, isPlaceholderData } = useQuery({
@@ -161,7 +161,6 @@ function Overview() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PeriodPicker value={selection} onChange={setSelection} />
-          <ShopFilter value={shopId} onChange={setShopId} />
         </div>
       </div>
 
